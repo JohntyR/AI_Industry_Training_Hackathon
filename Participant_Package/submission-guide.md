@@ -4,7 +4,9 @@ This guide defines what each team must submit and how the organizers will call t
 
 ## Required Repository Structure
 
-Each team repository must be public and reachable by the organizers before the submission deadline.
+Each team repository must be fully public for the entire event — there is no private-repository or
+collaborator-access option. Organizers evaluate strictly against your public GitHub URL, so it must
+be reachable by the organizers before the submission deadline.
 
 ```text
 TeamSubmission/
@@ -101,14 +103,10 @@ These fields have different owners during evaluation:
 ## Agent API Contract
 
 Your submitted agent server must live in `src/` and expose the two endpoints below. Teams may choose
-their own internal module structure while following the required API and architecture contracts.
-
-The required internal model flow is Qwen3.6-35B-A3B-FP8 through `agent-brain` for planning and tool-call generation,
-application code for executing those tool calls, and fine-tuned Nemotron for final answer synthesis
-from the verified results. Participants fine-tune Nemotron, not Qwen3.6-35B-A3B-FP8.
-
-The cluster bootstrap initially sets `DOMAIN_PREDICT_MODE=mock`. Change it to
-`DOMAIN_PREDICT_MODE=llm` after the fine-tuned adapter is available and before official evaluation.
+their own internal module structure while following the required API and architecture contract in
+[Challenge Brief → Required Model Roles](Challenge_Brief.md#required-model-roles) (Qwen plans and
+calls tools, application code executes them, fine-tuned Nemotron synthesizes the final answer —
+including the `DOMAIN_PREDICT_MODE` mock-to-llm switch required before official evaluation).
 
 ### `GET /health`
 
@@ -152,19 +150,11 @@ must safely handle at least three simultaneous calls.
 | `steps` | No | No | Total tool calls plus synthesis steps; retained for private diagnostics |
 | `tool_trace` | No | No | List of `{tool, args, result}`; retained for private diagnostics |
 
-**Slow-response penalty:** If your agent takes longer than **60 seconds** to return a response, **20% of the earned points for that question are deducted**. This is applied before the hidden-question category score is calculated and is visible in your private per-question report. Design your agent to return within 60 seconds.
+**Slow-response penalty:** see [Challenge Brief → Response-Time Rules](Challenge_Brief.md#response-time-rules) — responses over 60 seconds lose 20% of earned points; over 300 seconds scores zero. Design your agent to return within 60 seconds.
 
 **Malformed or timed-out responses** score zero for that question.
 
 ## Official Scoring
-
-The final hackathon score combines three category scores, each normalized to 100:
-
-| Category | Weight | What judges assess |
-|---|---:|---|
-| Fine-tuned model quality | 30% | Training preparation and method, improvement over the supplied base model, evaluation evidence, robustness, and actual use of the fine-tuned model. |
-| Architecture and repository quality | 30% | End-to-end design, tools and retrieval, code quality, API compliance, reliability, reproducibility, documentation, artifacts, logs, and repository hygiene. |
-| Hidden-question evaluation | 40% | Component-based correctness on unseen questions after any response-time deductions. |
 
 ```text
 final_score =
@@ -173,36 +163,34 @@ final_score =
   + (hidden_question_score * 0.40)
 ```
 
-The complete rubric is in `Challenge_Brief.md`.
+The complete rubric — what each category assesses, the Response-Time Rules, and the health-check
+gate — is in [Challenge Brief → Scoring](Challenge_Brief.md#scoring).
 
 ## Hidden-Question Scoring - 40%
 
-Each question has one or more grading components. Points are awarded per component — **partial credit is possible**.
+Each question has one or more grading components, each with its own point value:
 
+```json
+{
+  "grading": {
+    "max_score": 10,
+    "components": [
+      { "component_id": "C01", "points": 5, "expected_fact": "..." },
+      { "component_id": "C02", "points": 5, "expected_fact": "..." }
+    ]
+  }
+}
 ```
-question max score = 10 points
-  ├── component C01 (5 pts): "BHP.AX was best at +22.17%"   → YES/NO
-  └── component C02 (5 pts): "AMP.AX was worst at -50.04%"  → YES/NO
-```
 
-The LLM judge checks each component independently against your answer. Satisfying one component in
-this example earns 5/10; satisfying both earns 10/10.
+The LLM judge checks each `expected_fact` independently against your answer and awards that
+component's points on a YES/NO basis — **partial credit is possible**. Each evaluation case may also
+declare a `grading.tolerance_note` (e.g. `+/-0.02` percentage points for calculated returns); public
+calibration questions expose their tolerance notes, hidden questions use the same schema without
+revealing the expected facts.
 
-**What earns partial credit:**
-- Stating the right number but missing a secondary fact (e.g. date of first occurrence)
-- Getting some tickers right in a multi-ticker comparison but missing others
-
-**What earns zero for a component or question:**
-- An unsupported or guessed answer that does not satisfy the expected fact; tool use itself is not directly scored
-- Correct number buried in wrong context ("there are 41 records in total, of which 20 are holds" — judge reads "20 holds" not "20 increases")
-- Hedging that changes meaning ("approximately 41", "likely around 20")
-- Empty or error response
-
-**Equivalent formatting is accepted:** `"1,234"` = `"1234"`, `"Jan 2024"` = `"2024-01"`, minor rephrasing that preserves meaning.
-Each evaluation case may also declare a `grading.tolerance_note`. The judge receives and applies that
-case-specific rule, such as `+/-0.02` percentage points for calculated returns. Public calibration
-questions expose their tolerance notes; hidden questions use the same schema without revealing the
-expected facts.
+See [Challenge Brief → What a Good Answer vs a Bad Answer Looks
+Like](Challenge_Brief.md#what-a-good-answer-vs-a-bad-answer-looks-like) for worked examples of
+full-credit, zero-credit, and partial-credit responses.
 
 ## What the leaderboard shows
 
@@ -211,8 +199,6 @@ The public leaderboard shows only **Rank**, **Team**, and **Score** — nothing 
 Only the weighted final Score determines rank. The hidden-question category is calculated as
 `sum(earned_points) / sum(max_points) x 100%` after slow-response penalties, then contributes 40%
 to the final score.
-
-**Health check is a hard gate.** If `GET /health` does not return 200 at the start of the run, the team is skipped entirely — no questions are graded. Test your endpoint from a different machine before submitting.
 
 ## Your own detailed report
 
@@ -230,7 +216,7 @@ The `README.md` must include:
 - Team name and short project summary.
 - Exact command used to run the agent.
 - Agent endpoint paths and expected response shape.
-- High-level architecture showing Qwen planning and tool-call generation, runtime tool execution, retrieval, and fine-tuned Nemotron answer synthesis.
+- High-level architecture (per [Challenge Brief → Required Model Roles](Challenge_Brief.md#required-model-roles)): Qwen planning and tool-call generation, runtime tool execution, retrieval, and fine-tuned Nemotron answer synthesis.
 - Training summary explaining what was fine-tuned, which preparation method was used, and where supporting evidence is stored.
 - Base-versus-fine-tuned evaluation results and the method organizers should use to assess the final model.
 - Known limitations and failure cases.
@@ -250,20 +236,16 @@ The `training/` folder must contain enough evidence for judges to understand and
 
 Before submitting, confirm that:
 
-- The repository is public and the organizers can clone it without credentials.
+- The repository is public — no private repos or collaborator-access exceptions — and organizers can clone it without credentials.
 - `submission.json` is at the repository root with your final IP, port, and commit SHA filled in.
 - `commit_sha` is the exact 40-character commit hash to be judged.
 - `Participant_Package/answer_template.json` is present and follows the required response shape.
 - `GET /health` returns 200 from the IP in `submission.json`.
 - `POST /query` accepts `{"question": "..."}` and returns a JSON object with a non-empty `answer`; `steps` and `tool_trace` are optional.
-- `/query` and the model-serving stack handle at least three concurrent requests safely.
+- `/query` and the model-serving stack handle concurrent requests safely (see Agent API Contract).
 - Most responses return within 60 seconds (responses over 60s incur a 20% point deduction).
 - `README.md`, `src/`, `training/`, and `logs/` contain the required material.
-- The fine-tuned Nemotron model is used during inference.
-- The supplied Qwen3.6-35B-A3B-FP8 `agent-brain` alias performs planning, tool selection, and tool-call generation.
-- Application code executes Qwen's tool requests and returns structured results to the reasoning loop.
-- `DOMAIN_PREDICT_MODE=llm` is enabled after the adapter is served; the bootstrap `mock` mode is disabled.
-- Fine-tuned Nemotron synthesizes the final answer from the question and verified tool results.
+- The complete Qwen-plans / runtime-executes / fine-tuned-Nemotron-synthesizes architecture is implemented, and `DOMAIN_PREDICT_MODE=llm` is enabled after the adapter is served (see [Challenge Brief → Required Model Roles](Challenge_Brief.md#required-model-roles)).
 - `model.model_name` identifies the fine-tuned model and `model.endpoint` is reachable when direct testing is the agreed assessment method.
-- The repository documents base-versus-fine-tuned results and the complete Qwen/runtime/Nemotron architecture.
+- The repository documents base-versus-fine-tuned results and the complete architecture.
 - No credentials or organizer-only evaluation material are committed.

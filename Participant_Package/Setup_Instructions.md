@@ -1,18 +1,12 @@
 # Participant Setup Information
 
-The Atom environment is already prepared for participants. The datasets, Qwen3-35B reasoning brain,
-base Nemotron model, Python environment, and local model-serving services are supplied by the
-organizers.
-
-Each team receives a two-node GIGABYTE Atom cluster with one NVIDIA GB10 and 128 GB unified memory
-per node. The organizers provide the hostnames and IP addresses for each cluster; do not assume
-fixed machine names or copy addresses from another team.
+The Atom environment is already prepared for participants. The datasets, base Nemotron model, Python environment, and local model-serving services are supplied by the organizers.
 
 Participants should not download replacement datasets or switch to unrestricted external services during scoring.
 
 ## Supplied Datasets
 
-The hackathon uses exactly three datasets:
+The mock hackathon uses exactly three datasets:
 
 | Dataset | Supplied folder | Intended use |
 |---|---|---|
@@ -22,32 +16,56 @@ The hackathon uses exactly three datasets:
 
 Use structured parsing and deterministic calculations for RBA and ASX data. Use the supplied local full-text search, indexed search, or RAG service for AFR records. Cross-dataset answers must respect the overlapping date coverage and clearly identify missing coverage.
 
-## Supplied Models and Required Roles
+### Dataset Field Schemas
 
-The supplied **Qwen3-35B** model is available through the LiteLLM `agent-brain` alias. Qwen3-35B is the agent's
-reasoning and orchestration model: it plans the approach, selects tools, emits tool calls and
-arguments, examines results, and decides whether the tool loop should continue. Participants do
-not fine-tune Qwen3-35B.
+| Dataset | Fields |
+|---|---|
+| AFR | `HEADLINE, SUBHEAD, INTRO, TEXT, NEWSPAPER, PUBLICATIONDATE` |
+| ASX | `ticker, date, open, high, low, close, volume` |
+| RBA | `Effective Date, Change % points, Cash rate target%` (UTF-8 BOM encoding) |
+
+### AFR Text Search
+
+> **All AFR pattern counts must search across `HEADLINE`, `SUBHEAD`, `INTRO`, and `TEXT`
+> combined.** Searching only the headline or only the body will produce different counts that will
+> not match the reference answers. Use case-insensitive, once-per-record matching: a record counts
+> once even if the pattern appears in multiple fields.
+
+Whole-word searches must use word-boundary anchors, such as `\bNAB\b` rather than just `NAB`.
+Short acronyms without boundaries will match substrings in unrelated words and significantly
+inflate counts.
+
+These points are non-negotiable for reproducibility — scores are computed by running the same tool
+calls against the same data, so a different search scope or field set will not match the reference
+answers.
+
+## Supplied Model
 
 Participants receive **Llama-3.1-Nemotron-Nano-8B-v1** as the base model to fine-tune or adapt in Atom. Teams should:
 
 1. Prepare suitable domain training examples.
 2. Fine-tune or adapt the supplied model.
 3. Record the training configuration and data-preparation method.
-4. Connect the resulting model through `DOMAIN_FT_MODEL` for final answer synthesis from verified tool results.
+4. Connect the resulting model to the agent through the supplied local model alias or endpoint.
 5. Use data tools for dataset-derived facts rather than relying on model memory.
 
 After training, update the configured model alias or environment setting. Keep endpoints and credentials in environment variables rather than hard-coding them.
 
-The required request flow is:
+### Fine-Tuning Reference Baseline
 
-```text
-question -> Qwen3-35B agent-brain -> runtime executes tools -> Qwen3-35B reviews results
-         -> fine-tuned Nemotron synthesizes answer -> response
-```
+The configuration below is a confirmed working starting point.
 
-Qwen requests tool calls, but the agent's application code validates and executes them. Nemotron
-does not select the tools in this architecture.
+> **Note:** These values are a reference baseline, not a required configuration. Teams are
+> encouraged to experiment with the tunable parameters and justify their choices while staying
+> within the available hardware, event time, and model-context constraints.
+
+| Parameter | Reference starting value |
+|---|---|
+| NeMo container | `nvcr.io/nvidia/nemo:25.09` |
+| LoRA rank | 32 |
+| Sequence length | 512 (longer sequences may run out of memory on a single node) |
+| Learning rate | `5e-5` recommended (`1e-4` causes a loss spike after warmup) |
+| Training steps | 100 for a full run; the step 20 checkpoint already shows meaningful improvement |
 
 ## Reference Configuration
 
@@ -57,8 +75,9 @@ The supplied agent scaffold reads settings through `agent/config.py`:
 |---|---|
 | `LITELLM_BASE_URL` | Local OpenAI-compatible LiteLLM endpoint |
 | `LITELLM_KEY` | Event environment credential |
-| `BRAIN_MODEL` | Supplied Qwen3-35B reasoning and tool-calling alias; use `agent-brain` |
-| `DOMAIN_FT_MODEL` | Fine-tuned Nemotron alias used for final answer synthesis |
+| `BRAIN_MODEL` | Agent reasoning model alias |
+| `DOMAIN_FT_MODEL` | Fine-tuned Nemotron/domain model alias |
+| `DOMAIN_PREDICT_MODE` | Switches domain-model behavior between `mock` (bootstrap default) and `llm`. Must be `llm` before official evaluation so the fine-tuned model is actually used — see [Challenge Brief → Required Model Roles](Challenge_Brief.md#required-model-roles). |
 | `EMBED_MODEL` | Local embedding model alias, when used |
 | `QDRANT_URL` | Optional local AFR retrieval endpoint |
 | `QDRANT_COLLECTION` | Optional AFR collection name |
@@ -66,34 +85,34 @@ The supplied agent scaffold reads settings through `agent/config.py`:
 
 Route article-grounded sentiment questions through your fine-tuned domain model using the `DOMAIN_FT_MODEL` alias. The model should receive the retrieved AFR article text and the applicable RBA rate as context and return a sentiment classification (positive, negative, or mixed) and a likely market direction. Do not force the model to emit a made-up numeric return or price forecast.
 
-## How This Setup Is Assessed
+### Model Serving Endpoints
 
-- Fine-tuned model quality contributes 30% of the final score. Keep training configuration,
-  model-selection evidence, and base-versus-fine-tuned comparisons in `training/`.
-- Architecture and repository quality contributes 30%. Document how the agent, fine-tuned model,
-  Qwen3-35B brain, runtime tools, retrieval, and datasets work together in the root `README.md`.
-- Hidden-question performance contributes 40%. Keep the registered agent reachable through
-  `GET /health` and `POST /query`; response-time penalties apply to this category.
+| Service | Default endpoint | Notes |
+|---|---|---|
+| LiteLLM proxy | `http://localhost:4000` | Configured by organizers; use `LITELLM_BASE_URL`, `BRAIN_MODEL=agent-brain`, `DOMAIN_FT_MODEL=domain-ft`, and switch `DOMAIN_PREDICT_MODE` from `mock` to `llm` after the adapter is live. |
+| Qwen reasoning brain (vLLM) | Port `8000` on the assigned brain/agent node | Served by organizers behind the `agent-brain` alias for planning and tool-call generation. |
+| Fine-tuned Nemotron (vLLM) | Port `8001` on the assigned fine-tuning/model node | Team deploys after training behind the `domain-ft` alias for final synthesis. |
 
-See `Challenge_Brief.md` for the complete rubric and `submission-guide.md` for the exact contract.
+Each team receives a two-node GIGABYTE Atom cluster with one NVIDIA GB10 per node. The organizers
+provide the actual hostnames and IP addresses. Any hostname or IP shown in a command must be replaced
+with the value assigned to your cluster.
+
+> **Keep all credentials and endpoint URLs in environment variables.** Do not hard-code them in
+> source files. Source the organizer-provided `~/team.env` before starting your services. The
+> evaluation harness calls the registered agent endpoint; it does not inject variables into the
+> participant's running process.
 
 ## Before Submission
 
 Confirm that:
 
 - the agent can read all three approved datasets;
-- `BRAIN_MODEL=agent-brain` routes planning and tool-call generation through the supplied Qwen3-35B model;
-- the agent runtime executes Qwen's requested tools and returns structured results to Qwen;
 - the fine-tuned model is used during inference;
-- the fine-tuned Nemotron model synthesizes the final answer after the Qwen tool loop completes;
 - article-grounded sentiment questions route retrieved AFR context and the applicable RBA rate through your fine-tuned domain model;
 - one public question can pass through the complete agent pipeline;
-- every response contains the required `answer` field shown in `Participant_Package/answer_template.json`; optional `steps` and `tool_trace` fields are encouraged for private diagnostics;
-- `submission.json` contains the final team, repository, agent-endpoint, and model-assessment information described in `submission-guide.md`;
-- the response passes the JSON Schema in `validate.json`;
-- the `answer` field is present and non-empty for every question, even when evidence is incomplete — state the limitation in the answer text instead of returning an empty response;
-- submitted logs contain no credentials or organizer-only material.
+- the response passes the JSON Schema in `validate.json`.
+
+See [Submission Guide → Submission Checklist](submission-guide.md#submission-checklist) for the
+full pre-submission checklist (repository, `submission.json`, endpoints, and API contract).
 
 Ask an organizer if a supplied path, endpoint, model alias, or credential is unavailable. Do not silently replace a missing organizer service with an external one.
-
-

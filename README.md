@@ -1,7 +1,8 @@
 # Team Submission
 
-Use this folder as the root of your team's public GitHub repository. Replace the example values,
-add your source code and training evidence, then submit the final repository URL and commit SHA.
+Use this folder as the root of your team's fully public GitHub repository. Private repositories and
+collaborator-only access are not supported. Replace the example values, add your source code and
+training evidence, then submit the final repository URL and commit SHA.
 
 ```text
 TeamSubmission/
@@ -113,7 +114,7 @@ final_score =
   + (hidden_question_score * 0.40)
 ```
 
-See `Participant_Package/Challenge_Brief.md` for the complete rubric.
+See the [Challenge Brief](Participant_Package/Challenge_Brief.md#scoring) for the complete rubric.
 
 ## Hidden-Question Timeout And Slow Penalty
 
@@ -176,8 +177,8 @@ Required responsibility split:
    tool results and synthesizes the final `answer`.
 
 Participants fine-tune Nemotron, not Qwen3.6-35B-A3B-FP8. Qwen3.6-35B-A3B-FP8 requests tool calls; the application code performs
-the actual dataset operations. See `Participant_Package/Challenge_Brief.md` for the binding model
-roles.
+the actual dataset operations. See [Challenge Brief → Required Model
+Roles](Participant_Package/Challenge_Brief.md#required-model-roles) for the binding model roles.
 
 The cluster bootstrap starts with `DOMAIN_PREDICT_MODE=mock` so the pre-training scaffold can run.
 After serving the adapter, set `DOMAIN_PREDICT_MODE=llm` before evaluation. Keeping `mock` enabled
@@ -242,7 +243,8 @@ flowchart TD
 
 ## Participant Checklist
 
-- Publish the contents of `TeamSubmission/` as the root of your public GitHub repo.
+- Publish the contents of `TeamSubmission/` as the root of your fully public GitHub repo; private
+  repositories and collaborator-only access are not supported.
 - Fill in `submission.json` with final team info, IP, ports, and commit SHA.
 - Keep `agent.endpoint` reachable from the organizer machine; do not use `localhost`.
 - Confirm `GET /health` returns HTTP 200.

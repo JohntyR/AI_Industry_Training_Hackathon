@@ -12,7 +12,7 @@ approved local datasets.
 | Question coverage | Easy, medium, and hard questions using one or more approved datasets. |
 | Approved data | RBA cash-rate decisions, ASX company prices, and the AFR news corpus. |
 | Evaluation split | 15 public practice questions with answers; the remaining official questions stay with the organizers. |
-| Supplied reasoning brain | **Qwen3.6-35B-A3B-FP8** through the LiteLLM `agent-brain` alias. Qwen3.6-35B-A3B-FP8 performs planning, tool selection, tool-call generation, and iterative reasoning. |
+| Supplied reasoning brain | **Qwen3.6-35B-A3B-FP8** (called **Qwen** below) through the LiteLLM `agent-brain` alias. Qwen performs planning, tool selection, tool-call generation, and iterative reasoning. |
 | Fine-tuning target | `Llama-3.1-Nemotron-Nano-8B-v1`. Teams fine-tune Nemotron for grounded financial-domain answer synthesis. |
 | Official score | 30% fine-tuned model quality, 30% architecture and repository quality, and 40% hidden-question performance. |
 
@@ -28,27 +28,27 @@ data, and clear answers on the hidden evaluation set.
 
 ## Required Model Roles
 
-The submitted solution uses two model roles. Do not train Nemotron to replace the supplied Qwen3.6-35B-A3B-FP8
+The submitted solution uses two model roles. Do not train Nemotron to replace the supplied Qwen
 reasoning brain or use Nemotron as the primary tool-calling model.
 
 | Component | Required responsibility |
 |---|---|
-| Qwen3.6-35B-A3B-FP8 through `agent-brain` | Receives the question, plans the approach, selects `query_data` or retrieval tools, emits tool calls and arguments, reviews tool results, and decides whether another tool call is required. Participants do not fine-tune Qwen3.6-35B-A3B-FP8. |
-| Agent runtime | Validates and executes Qwen3.6-35B-A3B-FP8's tool calls against the approved local datasets, records the trace, and returns structured results to Qwen3.6-35B-A3B-FP8. The model requests calls; the application code executes them. |
-| Fine-tuned Nemotron through `DOMAIN_FT_MODEL` | Receives the question and accumulated verified tool results after the Qwen3.6-35B-A3B-FP8 reasoning loop, then synthesizes the final concise financial-domain answer. This is the model participants fine-tune and assess against the supplied base Nemotron. |
+| Qwen through `agent-brain` | Receives the question, plans the approach, selects `query_data` or retrieval tools, emits tool calls and arguments, reviews tool results, and decides whether another tool call is required. Participants do not fine-tune Qwen. |
+| Agent runtime | Validates and executes Qwen's tool calls against the approved local datasets, records the trace, and returns structured results to Qwen. The model requests calls; the application code executes them. |
+| Fine-tuned Nemotron through `DOMAIN_FT_MODEL` | Receives the question and accumulated verified tool results after the Qwen reasoning loop, then synthesizes the final concise financial-domain answer. This is the model participants fine-tune and assess against the supplied base Nemotron. |
 
 ```text
 question
-  -> Qwen3.6-35B-A3B-FP8 agent-brain plans and emits tool calls
+  -> Qwen agent-brain plans and emits tool calls
   -> agent runtime executes query_data / retrieve
-  -> tool results return to Qwen3.6-35B-A3B-FP8 until reasoning is complete
+  -> tool results return to Qwen until reasoning is complete
   -> fine-tuned Nemotron synthesizes the final answer
   -> POST /query returns {"answer": "..."}
 ```
 
-The organizer may also use Qwen3.6-35B-A3B-FP8 as the independent LLM judge. That evaluation call is
-separate from the Qwen3.6-35B-A3B-FP8 brain inside the submitted agent and does not replace the required
-fine-tuned Nemotron synthesis step.
+The organizer may also use Qwen as the independent LLM judge. That evaluation call is separate from
+the Qwen brain inside the submitted agent and does not replace the required fine-tuned Nemotron
+synthesis step.
 
 The cluster bootstrap begins with `DOMAIN_PREDICT_MODE=mock` for pre-training integration tests.
 Teams must switch to `DOMAIN_PREDICT_MODE=llm` after serving their adapter and before official
@@ -195,53 +195,10 @@ shared.
 - A README explaining the architecture, how to run the agent, and known limitations.
 - Useful logs or traces that allow the organizers to diagnose failed requests.
 
-### Submission Structure
-
-Submit a GitHub-style project using this structure:
-
-```text
-TeamSubmission/
-  README.md
-  submission.json
-  src/
-    .gitkeep
-  training/
-    .gitkeep
-  logs/
-    .gitkeep
-  Participant_Package/
-    answer_template.json
-    Challenge_Brief.md
-    public_questions.jsonl
-    questions_template.json
-    Setup_Instructions.md
-    submission-guide.md
-    submission_template.json
-    validate.json
-    handout/
-      01_training_guide.md
-      02_execution_guide.md
-      03_scoring_and_examples.md
-```
-
-| Path | Purpose |
-|---|---|
-| `README.md` | Team name, architecture, exact run command, model integration, and known limitations. |
-| `submission.json` | Final team metadata, repository commit, agent endpoint, and fine-tuned model information described in `submission-guide.md`. Include a reachable model endpoint when it is used for technical model assessment. |
-| `src/` | The team's submitted agent implementation, including its data-query or retrieval tools. |
-| `training/` | Data-preparation notes, fine-tuning configuration, scripts, metrics, and model summary. |
-| `logs/` | Useful non-sensitive training or agent-run logs. |
-| `training/.gitkeep`, `logs/.gitkeep` | Placeholders that keep initially empty required folders in Git. Replace or supplement them with the team's evidence and logs. |
-| `Participant_Package/` | Challenge materials, examples, validation rules, and participant handouts. |
-| `Participant_Package/answer_template.json` | Example response body for `POST /query`. |
-| `Participant_Package/questions_template.json` | Example request body for `POST /query`. |
-| `Participant_Package/submission_template.json` | Reference template for the real root `submission.json`. |
-| `Participant_Package/validate.json` | Machine-readable validation schema for agent responses. |
-| `Participant_Package/public_questions.jsonl` | Public calibration questions used to test the complete agent pipeline. |
-| `Participant_Package/Challenge_Brief.md` | Official challenge scope, scoring, deliverables, rules, and technical reference. |
-| `Participant_Package/Setup_Instructions.md` | Participant environment, dataset, model, and setup information. |
-| `Participant_Package/submission-guide.md` | Detailed repository, API, scoring, and submission requirements. |
-| `Participant_Package/handout/` | Training, execution, scoring, and worked-example guides. |
+Submit as a `TeamSubmission/` repository containing `README.md`, `submission.json`, `src/`,
+`training/`, `logs/`, and `Participant_Package/`. See [Submission Guide → Required Repository
+Structure](submission-guide.md#required-repository-structure) for the exact layout and a
+file-by-file breakdown of what each path must contain.
 
 ## Rules and Constraints
 
@@ -253,61 +210,105 @@ TeamSubmission/
 - Malformed, crashing, or timed-out responses may receive no credit for that case.
 - Keep secrets and credentials out of submitted files and logs.
 
-## Technical Reference
+### Technical Reference
 
-The points below are non-negotiable for reproducibility. Scores are computed by running the same
-tool calls against the same data. If your implementation uses a different search scope or field
-set, your counts will not match.
+Dataset schemas, AFR search rules, the fine-tuning baseline configuration, and model-serving
+endpoints are documented in [Setup Instructions](Setup_Instructions.md). Those points are non-negotiable for
+reproducibility: scores are computed by running the same tool calls against the same data, so a
+different search scope or field set will not match the reference answers.
 
-### Dataset Field Schemas
+## What a Good Answer vs a Bad Answer Looks Like
 
-| Dataset | Fields |
-|---|---|
-| AFR | `HEADLINE, SUBHEAD, INTRO, TEXT, NEWSPAPER, PUBLICATIONDATE` |
-| ASX | `ticker, date, open, high, low, close, volume` |
-| RBA | `Effective Date, Change % points, Cash rate target%` (UTF-8 BOM encoding) |
+### Slow-response penalty, worked example
 
-### AFR Text Search
+Applying the Response-Time Rules above: your answer earns 8/10, but took 83 seconds. Penalty = 8 ×
+0.20 = 1.6 pts deducted. Final = 6.4/10.
 
-> **All AFR pattern counts must search across `HEADLINE`, `SUBHEAD`, `INTRO`, and `TEXT`
-> combined.** Searching only the headline or only the body will produce different counts that will
-> not match the reference answers. Use case-insensitive, once-per-record matching: a record counts
-> once even if the pattern appears in multiple fields.
+**Design implication:** Aim for ≤3 tool calls per question. If your agent loops more than 5 times or
+calls `list` on a large dataset, it will likely exceed 60 seconds on complex questions.
 
-Whole-word searches must use word-boundary anchors, such as `\bNAB\b` rather than just `NAB`.
-Short acronyms without boundaries will match substrings in unrelated words and significantly
-inflate counts.
+### What zero looks like — and why
 
-### Fine-Tuning Reference Baseline
+#### Example 1: No tool use (base model, first run)
 
-Participants receive **Llama-3.1-Nemotron-Nano-8B-v1**. The configuration below is a confirmed
-working starting point.
+**Question:** From the first RBA record to the last, how many cash-rate decisions changed the rate,
+and how many were increases versus decreases?
 
-> **Note:** These values are a reference baseline, not a required configuration. Teams are
-> encouraged to experiment with the tunable parameters and justify their choices while staying
-> within the available hardware, event time, and model-context constraints.
+**Answer (base model, 0% score):**
+> "The user is asking for statistics about RBA cash rate decisions from the first record to the
+> last. I need to find the RBA records in the team's corpora. I will use the `retrieve` tool to
+> search for 'RBA cash rate decisions' or 'RBA board minutes' or similar. Then I will analyze the
+> retrieved documents to count the total number of decisions that changed the rate, and how many
+> were increases vs decreases…"
 
-| Parameter | Reference starting value |
-|---|---|
-| NeMo container | `nvcr.io/nvidia/nemo:25.09` |
-| LoRA rank | 32 |
-| Sequence length | 512 (longer sequences may run out of memory on a single node) |
-| Learning rate | `5e-5` recommended (`1e-4` causes a loss spike after warmup) |
-| Training steps | 100 for a full run; the step 20 checkpoint already shows meaningful improvement |
+**Why it fails:**
+- A retrieval tool over news articles will never return structured RBA decision counts.
+- The answer never produces a number.
+- This is the agent "thinking out loud" rather than acting — a properly fine-tuned domain model
+  eliminates this.
 
-### Model Serving Endpoints
+#### Example 2: Tool called but wrong metric
 
-| Service | Default endpoint | Notes |
-|---|---|---|
-| LiteLLM proxy | `http://localhost:4000` | Configured by organizers; use `LITELLM_BASE_URL`, `BRAIN_MODEL=agent-brain`, `DOMAIN_FT_MODEL=domain-ft`, and switch `DOMAIN_PREDICT_MODE` from `mock` to `llm` after the adapter is live. |
-| Qwen3.6-35B-A3B-FP8 reasoning brain (vLLM) | Port `8000` on the assigned brain/agent node | Served by organizers behind the `agent-brain` alias for planning and tool-call generation. |
-| Fine-tuned Nemotron (vLLM) | Port `8001` on the assigned fine-tuning/model node | Team deploys after training behind the `domain-ft` alias for final synthesis. |
+**Question:** What was the longest period the RBA held rates unchanged?
 
-Each team receives a two-node GIGABYTE Atom cluster with one NVIDIA GB10 per node. The organizers
-provide the actual hostnames and IP addresses. Any hostname or IP shown in a command must be replaced
-with the value assigned to your cluster.
+**Answer (early iteration, 0% score):**
+> "Based on my search of the RBA data, the cash rate was held steady for an extended period during
+> 2016-2019."
 
-> **Keep all credentials and endpoint URLs in environment variables.** Do not hard-code them in
-> source files. Source the organizer-provided `~/team.env` before starting your services. The
-> evaluation harness calls the registered agent endpoint; it does not inject variables into the
-> participant's running process.
+**Why it fails:**
+- The agent didn't call the correct structured-data metric for the longest hold streak.
+- It likely listed raw rows and tried to eyeball the output instead of computing the answer.
+- The answer gives no exact count of days, no start/end dates — zero components verified.
+
+#### Example 3: Partial credit — right number, missing context
+
+**Question:** What is the highest cash-rate target ever in the RBA dataset, and how many records
+show it?
+
+**Answer (partial, 50% score):**
+> "The highest cash-rate target in the RBA dataset is 4.75, which first appeared on the effective
+> date 2010-11-03. This maximum rate appears across 11 effective-date records."
+
+**Why it only gets 50%:** The grading had 3 components: the rate (4.75 ✓), the first effective date
+(2010-11-03 ✗ — the judge expected 2010-11-02), and the record count (11 ✓). Two of three components
+matched. **Date precision matters.**
+
+### What full marks looks like
+
+#### Easy question — 100% score
+
+**Question:** What is the lowest cash-rate target in the RBA dataset, when did it first take effect,
+and how many decision records show that rate?
+
+**Answer:**
+> "The lowest cash-rate target in the RBA dataset was 0.1, which first took effect on 2020-11-04, and
+> 16 decision records show that rate."
+
+**Why it works:**
+- One sentence, three facts, no hedging.
+- All three grading components satisfied: `0.1`, `2020-11-04`, `16`.
+- Concise — the judge doesn't need to find the answer buried in paragraphs.
+
+#### Medium question — 100% score
+
+**Question:** What was the longest stretch between two non-zero RBA rate changes?
+
+**Answer:**
+> "The longest stretch between two non-zero RBA rate changes was 1036 days, lasting from 2016-08-03
+> to 2019-06-05, during which the rate held at 1.5 before changing to 1.25."
+
+**Why it works:**
+- The agent retrieved the exact structured result rather than estimating it.
+- Every component is stated: duration (1036 days), start date (2016-08-03), end date (2019-06-05),
+  rate during hold (1.5), rate after (1.25).
+- No invented context, no hedging.
+
+#### Hard question — 100% score
+
+**Question:** How many hikes occurred during the 2022-2023 tightening cycle, and what was the
+cumulative increase?
+
+**Answer:**
+> "There were 13 hikes during the 4 May 2022 to 8 Nov 2023 tightening cycle, resulting in a
+> cumulative increase of 4.25 percentage points. The target rate immediately before the first hike
+> was 0.1 percent, and the final target reached on 8 Nov 2023 was 4.35 percent."

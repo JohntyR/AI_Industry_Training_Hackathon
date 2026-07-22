@@ -18,8 +18,8 @@ final_score =
 ```
 
 The examples below explain how the automated hidden-question category is graded. Fine-tuned model
-quality and architecture/repository quality are assessed separately using the rubric in
-`../Challenge_Brief.md`.
+quality and architecture/repository quality are assessed separately using the rubric in the
+[Challenge Brief](../Challenge_Brief.md#scoring).
 
 ## Hidden-question scoring - 40%
 
