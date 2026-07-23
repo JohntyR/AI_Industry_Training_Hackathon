@@ -2,6 +2,20 @@
 
 Build and fine-tune an evidence-grounded market signal agent over RBA, ASX, and AFR data.
 
+## Contents
+
+- [Challenge Scope](#challenge-scope)
+- [Objective](#objective)
+- [Required Model Roles](#required-model-roles)
+- [Task Format](#task-format)
+- [Required Response](#required-response)
+- [Scoring](#scoring)
+- [Required Deliverables](#required-deliverables)
+- [Rules and Constraints](#rules-and-constraints)
+- [What a Good Answer vs a Bad Answer Looks Like](#what-a-good-answer-vs-a-bad-answer-looks-like)
+
+---
+
 ## Challenge Scope
 
 This hackathon evaluates how effectively an agent answers financial-market questions using the

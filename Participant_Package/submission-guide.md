@@ -2,6 +2,21 @@
 
 This guide defines what each team must submit and how the organizers will call the submitted agent during evaluation.
 
+## Contents
+
+- [Required Repository Structure](#required-repository-structure)
+- [Final `submission.json`](#final-submissionjson)
+- [Agent API Contract](#agent-api-contract)
+- [Official Scoring](#official-scoring)
+- [Hidden-Question Scoring - 40%](#hidden-question-scoring-40)
+- [What the leaderboard shows](#what-the-leaderboard-shows)
+- [Your own detailed report](#your-own-detailed-report)
+- [README Requirements](#readme-requirements)
+- [Training Evidence](#training-evidence)
+- [Submission Checklist](#submission-checklist)
+
+---
+
 ## Required Repository Structure
 
 Each team repository must be fully public for the entire event — there is no private-repository or

@@ -4,6 +4,15 @@ The Atom environment is already prepared for participants. The datasets, base Ne
 
 Participants should not download replacement datasets or switch to unrestricted external services during scoring.
 
+## Contents
+
+- [Supplied Datasets](#supplied-datasets)
+- [Supplied Model](#supplied-model)
+- [Reference Configuration](#reference-configuration)
+- [Before Submission](#before-submission)
+
+---
+
 ## Supplied Datasets
 
 The mock hackathon uses exactly three datasets:
