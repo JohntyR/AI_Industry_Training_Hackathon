@@ -1,17 +1,17 @@
 {
   "schema_version": "1.0",
-  "team_id": "mock-team",
-  "team_name": "Mock Team",
-  "github_url": "https://github.com/example/mock-team-agent",
-  "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+  "team_id": "<TODO-team-id>",
+  "team_name": "<TODO-team-name>",
+  "github_url": "https://github.com/JohntyR/AI_Industry_Training_Hackathon",
+  "commit_sha": "<TODO-40-char-sha-of-the-final-pushed-commit>",
   "agent": {
-    "endpoint": "http://172.20.x.x:5000",
+    "endpoint": "http://<TODO-agent-node-ip>:5000",
     "health_path": "/health",
     "query_path": "/query",
     "timeout_seconds": 300
   },
   "model": {
-    "endpoint": "http://172.20.x.x:8001/v1",
-    "model_name": "nemotron-8b-finance-lora"
+    "endpoint": "http://<TODO-model-node-ip>:8001/v1",
+    "model_name": "<TODO-must-match-DOMAIN_FT_MODEL>"
   }
 }

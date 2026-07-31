@@ -6,14 +6,44 @@
 
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
+
 from langchain_core.messages import AIMessage, ToolMessage
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+import config
 from agent_graph import run_brain_agent
 from domain_model import synthesize
 
-app = FastAPI(title="Cognitivo Hackathon Agent")
+logger = logging.getLogger("agent")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Announce the synthesis mode loudly at startup.
+
+    Shipping in bootstrap ``mock`` mode is silent and costly, so the one place
+    it cannot be missed is the log line printed before the first request.
+    """
+    problems = config.evaluation_readiness()
+    if problems:
+        logger.warning("=" * 72)
+        logger.warning("AGENT IS NOT EVALUATION-READY:")
+        for problem in problems:
+            logger.warning("  - %s", problem)
+        logger.warning("Run `python scripts/preflight.py` for the full check.")
+        logger.warning("=" * 72)
+    else:
+        logger.info(
+            "Evaluation-ready: brain=%s synthesis=%s (mode=llm)",
+            config.BRAIN_MODEL, config.DOMAIN_FT_MODEL,
+        )
+    yield
+
+
+app = FastAPI(title="Cognitivo Hackathon Agent", lifespan=lifespan)
 
 
 class QueryRequest(BaseModel):
@@ -34,7 +64,17 @@ class QueryResponse(BaseModel):
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    """Always HTTP 200.
+
+    This is a hard gate: a non-200 here means the team is skipped and scores
+    zero on the hidden questions. It therefore never depends on a model server
+    being reachable. The extra fields are diagnostics only.
+    """
+    return {
+        "status": "ok",
+        "synthesis_mode": config.DOMAIN_PREDICT_MODE,
+        "evaluation_ready": not config.evaluation_readiness(),
+    }
 
 
 def _extract_trace(messages: list) -> tuple[int, list[ToolTraceEntry]]:

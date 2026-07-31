@@ -1,264 +1,321 @@
-# Team Submission
+# Evidence-Grounded Market Signal Agent
 
-Use this folder as the root of your team's fully public GitHub repository. Private repositories and
-collaborator-only access are not supported. Replace the example values, add your source code and
-training evidence, then submit the final repository URL and commit SHA.
+A question-answering agent over the approved RBA, ASX, and AFR datasets. Every dataset-derived
+number is computed by deterministic Python against the local files — no figure is ever recalled from
+model memory.
+
+The system implements the responsibility split mandated by
+[Challenge Brief → Required Model Roles](Participant_Package/Challenge_Brief.md#required-model-roles):
+**Qwen plans and emits tool calls, the application runtime executes them, and the fine-tuned
+Nemotron model writes the final answer.**
+
+- [Architecture](#architecture)
+- [Repository Layout](#repository-layout)
+- [Running the Agent](#running-the-agent)
+- [API Contract](#api-contract)
+- [Tool Reference](#tool-reference)
+- [Determinism Rules](#determinism-rules)
+- [Evaluation](#evaluation)
+- [Fine-Tuned Model](#fine-tuned-model)
+- [Known Limitations](#known-limitations)
+- [Pre-Submission Checklist](#pre-submission-checklist)
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Q["POST /query<br/>{question}"] --> S["server.py<br/>FastAPI"]
+    S --> B["agent_graph.py<br/>Qwen agent-brain"]
+
+    B -- "tool call + args" --> R["tools.py<br/>runtime: validate + coerce"]
+    R --> E["query_data.py<br/>deterministic engine (stdlib only)"]
+    E --> D[("RBA CSV<br/>ASX JSONL<br/>AFR JSONL")]
+    D --> E
+    E -- "structured JSON" --> R
+    R -- "ToolMessage" --> B
+    B -- "loop until complete" --> B
+
+    B -- "verified tool results" --> N["domain_model.py<br/>fine-tuned Nemotron"]
+    N --> A["{answer, steps, tool_trace}"]
+    S --> A
+```
+
+| Component | File | Responsibility |
+|---|---|---|
+| Reasoning brain | [src/agent_graph.py](src/agent_graph.py) | Qwen (`BRAIN_MODEL`) plans the approach, selects a metric, emits tool calls and arguments, reads results, decides whether another call is needed. Not fine-tuned. Never writes the answer. |
+| Tool runtime | [src/tools.py](src/tools.py) | Typed LangChain tool surface. Validates and coerces Qwen's arguments, executes the call, returns structured results. Errors are returned as data, never raised. |
+| Deterministic engine | [src/query_data.py](src/query_data.py) | Pure-stdlib parsing and calculation over the local datasets. The only source of dataset-derived numbers. |
+| Answer synthesis | [src/domain_model.py](src/domain_model.py) | Fine-tuned Nemotron (`DOMAIN_FT_MODEL`) receives the question plus accumulated verified tool results and writes the final `answer`. |
+| API surface | [src/server.py](src/server.py) | `GET /health`, `POST /query`. Guarantees a valid non-empty `answer` on every path, including model or tool failure. |
+
+### Why the models never do arithmetic
+
+Qwen chooses *which* metric to call; `query_data.py` computes the number; Nemotron only phrases the
+verified result. This is what makes answers reproducible: the organizers score by running the same
+tool calls against the same data, so a calculation done inside a model — even a correct one — is
+unverifiable and drifts between runs.
+
+### Failure containment
+
+An uncaught exception on `/query` returns HTTP 500 with no `answer` field, which the harness scores
+as zero. Every failure path is therefore contained:
+
+- A tool exception is caught in [tools.py](src/tools.py) and returned as `{"error", "hint",
+  "metric_reference"}` so the brain can read the problem and retry with corrected arguments.
+- A brain-loop failure is caught in [server.py](src/server.py); synthesis still runs on whatever
+  tool results were collected.
+- A synthesis failure falls back to the raw tool results, then to an explicit statement of the
+  limitation. `answer` is never empty.
+
+---
+
+## Repository Layout
 
 ```text
-TeamSubmission/
-  README.md
-  submission.json
-  src/
-    .gitkeep
-  training/
-    .gitkeep
-  logs/
-    .gitkeep
-  Participant_Package/
-    answer_template.json
-    Challenge_Brief.md
-    public_questions.jsonl
-    questions_template.json
-    Setup_Instructions.md
-    submission-guide.md
-    submission_template.json
-    validate.json
-    handout/
-      01_training_guide.md
-      02_execution_guide.md
-      03_scoring_and_examples.md
+.
+├── README.md                  this file
+├── submission.json            team identity, pinned commit, agent + model endpoints
+├── requirements.txt           pinned Python dependencies
+├── src/                       agent source
+│   ├── server.py              FastAPI app: /health, /query
+│   ├── agent_graph.py         Qwen planning / tool-calling loop (LangGraph)
+│   ├── tools.py               typed tool surface over the deterministic engine
+│   ├── query_data.py          deterministic RBA/ASX/AFR calculations (stdlib only)
+│   ├── domain_model.py        fine-tuned Nemotron answer synthesis
+│   ├── config.py              environment configuration
+│   └── langgraph.json         LangGraph dev-server config
+├── training/                  fine-tuning evidence, configs, metrics, comparison
+├── tests/                     public-question regression tests
+├── logs/                      non-sensitive evaluation logs and traces
+├── data set/                  organizer-supplied datasets (not modified)
+└── Participant_Package/       challenge materials and validation schema
 ```
 
-| Path | Required | Purpose |
-|---|---:|---|
-| `submission.json` | Yes | Team identity, pinned GitHub commit, agent endpoint, and fine-tuned model assessment information. |
-| `src/` | Yes | Agent source code and any retrieval/data-query tools. |
-| `training/` | Yes | Fine-tuning scripts, configs, preparation notes, logs, metrics, or model summary. |
-| `logs/` | Yes | Non-sensitive run logs or screenshots useful for judging/debugging. |
-| `Participant_Package/` | Yes | Challenge materials, examples, validation schema, and participant handouts. |
+---
 
-Files ending in `_template.json` are examples only. Edit the root `submission.json` for the final
-team registration; use the question and answer templates to implement and test the `/query` API.
+## Running the Agent
 
-Use `src/` for the agent implementation submitted by your team. It must expose the required API
-contract and implement the documented Qwen, tool-runtime, retrieval, and fine-tuned Nemotron flow.
-Remove `.gitkeep` after adding source files.
+### 1. Environment
 
-Do not require `docs/`, `tests/`, `requirements.txt`, or Docker. The official Atom/shared
-environment supplies common dependencies, and official scoring calls the registered agent endpoint.
+Python 3.13. Install dependencies:
 
-## Agent Contract
-
-The evaluation harness calls the endpoint declared in `submission.json`.
-
-### Health Check
-
-```http
-GET /health
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Must return HTTP 200. If this fails, the team is skipped.
+Create `.env` in the repository root (it is gitignored — never commit it):
 
-Example:
+```env
+LITELLM_BASE_URL=http://<brain-node>:4000
+LITELLM_KEY=<key>
+BRAIN_MODEL=agent-brain
+
+DOMAIN_BASE_URL=http://<model-node>:8001/v1
+DOMAIN_KEY=<key>
+DOMAIN_FT_MODEL=domain-ft
+DOMAIN_PREDICT_MODE=llm
+
+MAX_AGENT_STEPS=10
+HACKATHON_DATA_DIR=/absolute/path/to/data set
+```
+
+`DOMAIN_PREDICT_MODE` must be `llm` for evaluation. The `mock` value is the documented cluster
+bootstrap default and concatenates raw tool JSON instead of calling the fine-tuned model — shipping
+with it loses both model-quality and architecture credit.
+
+### 2. Serve
+
+```bash
+uvicorn server:app --app-dir src --host 0.0.0.0 --port 5000
+```
+
+Bind to `0.0.0.0`, not `localhost` — the organizer harness calls the agent from a different machine.
+
+### 3. Interactive graph development (optional)
+
+```bash
+./src/run-langgraph-dev.sh
+```
+
+Opens the LangGraph dev server for stepping through the brain's tool-calling loop.
+
+### 4. Verify
+
+```bash
+python tests/test_public.py        # engine reproduces all 15 public reference answers
+curl -s localhost:5000/health
+curl -s localhost:5000/query -H 'Content-Type: application/json' \
+  -d '{"question":"From the first RBA record to the last, how many cash-rate decisions changed the rate?"}'
+```
+
+---
+
+## API Contract
+
+### `GET /health`
+
+Returns HTTP 200. This is a hard gate — if it fails during the pre-evaluation check the team is
+skipped and scores zero on the hidden questions.
 
 ```json
 {"status": "ok"}
 ```
 
-### Question Endpoint
+### `POST /query`
 
-```http
-POST /query
-Content-Type: application/json
-
-{"question": "Hidden benchmark question"}
+```json
+{"question": "Excluding Tabcorp, which ticker had the best and worst 2018 return?"}
 ```
 
-The returned JSON must include `answer`. The automated hidden-question judge grades only `answer`.
-`steps` and `tool_trace` are optional and are retained only for private organizer diagnostics and
-the submitting team's sanitized report. They do not appear on the public leaderboard.
-
-The hidden-question harness may send up to **three concurrent `POST /query` requests per team**.
-Your agent and model-serving stack must handle at least three simultaneous requests without mixing
-responses or corrupting shared state. Organizers may lower this with `--workers`, but teams should
-design for the documented default of three.
+Returns a response validated against
+[Participant_Package/validate.json](Participant_Package/validate.json):
 
 ```json
 {
-  "answer": "41 of the 175 decision records changed the rate: 20 increases and 21 decreases.",
-  "steps": 3,
+  "answer": "Excluding Tabcorp, BHP.AX had the best 2018 return at +22.17%, and AMP.AX had the worst at -50.04%.",
+  "steps": 2,
   "tool_trace": [
     {
       "tool": "query_data",
-      "args": {"dataset": "rba", "metric": "count_changes"},
-      "result": "41 changes: 20 increases, 21 decreases"
+      "args": {"dataset": "asx", "metric": "rank_annual_returns", "year": 2018},
+      "result": "{\"best\": {\"ticker\": \"BHP.AX\", \"return_pct\": 22.17}, ...}"
     }
   ]
 }
 ```
 
-## Official Scoring
+Only `answer` is graded. `steps` and `tool_trace` are organizer diagnostics — they are also the
+evidence that Qwen planned the call and the runtime executed it, so they are always populated.
 
-The final hackathon score combines three independently assessed categories:
+The harness sends up to three concurrent requests. The agent holds no per-request mutable state:
+the LangGraph graph is stateless, dataset caches in `query_data.py` are read-only after load, and
+each request carries its own message list.
 
-| Category | Weight | Summary |
-|---|---:|---|
-| Fine-tuned model quality | 30% | Training quality, base-versus-fine-tuned improvement, robustness, evidence, and use of the fine-tuned model in the submitted solution. |
-| Architecture and repository quality | 30% | Agent design, tools and retrieval, code quality, API compliance, reproducibility, documentation, training artifacts, logs, and repository hygiene. |
-| Hidden-question evaluation | 40% | Component-based correctness on unseen questions, including partial credit and response-time penalties. |
+---
 
-```text
-final_score =
-    (fine_tuned_model_score * 0.30)
-  + (architecture_repository_score * 0.30)
-  + (hidden_question_score * 0.40)
+## Tool Reference
+
+Two tools are exposed to the brain. Both return JSON strings; both return `{"error": ...}` rather
+than raising, so a bad call is recoverable inside the loop.
+
+### `query_data(dataset, metric, ...)`
+
+| Dataset | Metrics |
+|---|---|
+| `rba` | `count`, `count_changes`, `count_increases`, `count_decreases`, `extremes`, `lookup_rate`, `max_hold_streak`, `period_summary`, `list` |
+| `asx` | `dimensions`, `annual_return`, `full_sample_return`, `rank_annual_returns`, `rank_full_sample_returns`, `avg_volume`, `max_drawdown`, `window_return`, `basket_window_return`, `volatility`, `correlation`, `quote` |
+| `afr` | `count`, `count_year`, `count_by_year`, `count_by_month`, `peak_year_and_month`, `share`, `find_article` |
+| `meta` | `coverage` — dataset date ranges, for "can the data support this?" questions |
+
+Arguments are flat and typed (`ticker`, `year`, `pattern`, `start`, `end`, …) rather than a nested
+blob, so the brain can express the call it wants. The runtime coerces types before dispatch: vLLM's
+`qwen3_xml` tool-call parser extracts every `<parameter=...>` value as a string, so `year` arrives
+as `"2018"` and `exclude_tabcorp` as `"true"`.
+
+### `afr_get_article(headline, date)`
+
+Fetches one AFR article's text for sentiment questions. Matching is paraphrase-tolerant
+(stopword-stripped token overlap with light finance-synonym expansion, headline weighted 3×, anchored
+by publication date when supplied), so an approximate headline still resolves.
+
+---
+
+## Determinism Rules
+
+These are non-negotiable for reproducibility — the organizers score by re-running the same
+calculations, so a different search scope or field set will not match the reference answers.
+
+| Rule | Detail |
+|---|---|
+| Tabcorp exclusion | `TAH.AX` is excluded from ASX rankings, baskets, averages, and extremes unless the question explicitly includes it. Its +2,660% full-sample return is a flagged data artifact that also skews average volume. |
+| ASX returns | First-to-last **close**, simple return `((last/first) - 1) × 100`. |
+| Basket | Arithmetic mean of the 17 non-Tabcorp constituents' individual returns. |
+| Max drawdown | `min` over rows of `(close / running_peak - 1)`, reporting peak and trough dates. |
+| AFR search | Case-insensitive, across `HEADLINE + SUBHEAD + INTRO + TEXT` combined, counted **once per record**. Whole-word counts require `\b` anchors. |
+| RBA rate in force | The `Cash rate target%` of the latest row with `Effective Date <= D`. |
+| Tolerances | Dates, counts, rates, rankings exact; returns/drawdowns/volatility/shares ±0.02pp; correlations ±0.001; closes ±0.0001; average volume ±1 share. |
+
+---
+
+## Evaluation
+
+### Engine regression
+
+[tests/test_public.py](tests/test_public.py) asserts that `query_data` reproduces the exact figures
+in all 15 public reference answers, at the tolerances above. This runs without any model server.
+
+```bash
+python tests/test_public.py
 ```
 
-See the [Challenge Brief](Participant_Package/Challenge_Brief.md#scoring) for the complete rubric.
+### End-to-end
 
-## Hidden-Question Timeout And Slow Penalty
+The full pipeline is run against the 15 public calibration questions and the per-question trace is
+written to [logs/langchain_public_eval.json](logs/langchain_public_eval.json), including the tool
+calls made and the answer produced.
 
-| Response time | Effect |
-|---:|---|
-| `<= 60s` | Full earned points |
-| `> 60s` and `<= 300s` | 20% penalty on earned points for that question |
-| `> 300s` | Timeout, zero points |
+The public questions are calibration cases only — no question-ID-specific answers are hard-coded
+anywhere in the agent.
 
-Example: if an answer earns `8/10` but returns in `83s`, the slow penalty is `1.6`, so the final
-score is `6.4/10`.
+---
 
-## Leaderboard
+## Fine-Tuned Model
 
-The public leaderboard shows only **Rank**, **Team**, and the weighted final **Score**.
-Latency, availability, tool usage, and step counts do not appear on the public leaderboard and are
-not shared between teams.
+`Llama-3.1-Nemotron-Nano-8B-v1` fine-tuned with LoRA for grounded financial answer synthesis, served
+by vLLM and reached through `DOMAIN_FT_MODEL`. Training data preparation, configuration,
+checkpoint selection, metrics, and the base-versus-fine-tuned comparison are documented in
+[training/README.md](training/README.md).
 
-After the run, each team receives a private detailed report covering only their own agent —
-overall metrics plus a per-question breakdown with component YES/NO verdicts. Hidden grading
-facts are stripped so nothing leaks from the question pool.
+---
 
-If your `GET /health` check fails at the start of the run, the team is skipped entirely and no
-questions are graded. Test your endpoint from a different machine before submitting.
+## Known Limitations
 
-## Fine-Tuned Model Assessment
+Documented honestly rather than hidden; each is a known gap, not an unknown one.
 
-Fine-tuned model quality contributes 30% of the official score. Provide the model name and a
-reachable OpenAI-compatible endpoint in `submission.json` when the organizers will test the model
-directly. If direct model serving is not possible, agree on another assessment method with the
-organizers before the deadline. The repository must still include training evidence and a
-base-versus-fine-tuned comparison.
+**Runtime**
 
-Typical setup:
+- No end-to-end deadline. Model calls have no explicit timeout, so a slow brain loop can cross the
+  60-second penalty threshold on multi-part questions.
+- If the brain loop raises mid-run, tool results already collected inside the graph are lost —
+  synthesis then runs with no evidence. Streaming the graph and accumulating messages incrementally
+  would preserve partial evidence.
+- Dataset caches load lazily. The first AFR question pays roughly 2.5 s to parse the 780 MB corpus.
 
-```text
-LiteLLM :4000
-agent   :5000
-vLLM FT :8001
-```
+**Tool layer**
 
-Recommended architecture:
+- Metrics accept and silently ignore parameters they do not use — for example
+  `rba/count_decreases(year=2019)` returns the all-time count with no error. Per-metric argument
+  validation is needed.
+- No metric returns the basket's average *annual* return, and the ticker universe cannot be
+  enumerated from a tool, so the brain has no grounded route to either.
+- `find_article` truncates article text to 4,000 characters, which can drop sentiment evidence.
+- 92 AFR records have a blank `PUBLICATIONDATE` and form an empty-string bucket in
+  `count_by_year` / `count_by_month`.
+- Window returns silently snap to the nearest available trading day when the requested date is a
+  market holiday, without reporting the dates actually used.
 
-```text
-brain/agent node -> Qwen3.6-35B-A3B-FP8 agent-brain + agent runtime
-fine-tuning/model node -> fine-tuned Nemotron served by vLLM
-```
+**Coverage**
 
-Each team receives a two-node GIGABYTE Atom cluster with one NVIDIA GB10 per node. Hostnames and IP
-addresses are assigned for the event, so use the values provided with your cluster rather than
-hard-coding example machine names.
+- ASX and AFR end December 2021 while RBA runs to 2026. Questions requiring ASX or AFR observations
+  after 2021 are correctly answered as unsupported rather than estimated — see
+  `query_data(dataset="meta", metric="coverage")`.
+- Sentiment classification is performed on article text by the models; it is the one output not
+  derived from a deterministic calculation.
 
-Required responsibility split:
+---
 
-1. Qwen3.6-35B-A3B-FP8, accessed through the supplied LiteLLM `agent-brain` alias, plans the answer and emits all
-   tool calls and arguments.
-2. The agent runtime validates and executes those calls against the approved datasets, then returns
-   structured results to Qwen for any further reasoning.
-3. When the tool loop is complete, the fine-tuned Nemotron model receives the question and verified
-   tool results and synthesizes the final `answer`.
+## Pre-Submission Checklist
 
-Participants fine-tune Nemotron, not Qwen3.6-35B-A3B-FP8. Qwen3.6-35B-A3B-FP8 requests tool calls; the application code performs
-the actual dataset operations. See [Challenge Brief → Required Model
-Roles](Participant_Package/Challenge_Brief.md#required-model-roles) for the binding model roles.
+Run `python scripts/preflight.py` to check most of these mechanically.
 
-The cluster bootstrap starts with `DOMAIN_PREDICT_MODE=mock` so the pre-training scaffold can run.
-After serving the adapter, set `DOMAIN_PREDICT_MODE=llm` before evaluation. Keeping `mock` enabled
-means the submitted agent is not using the fine-tuned model and will lose model-quality and
-architecture credit.
-
-`submission.json` serves all three assessment pillars: the hidden-question harness uses the agent
-endpoint, paths, and declared timeout; organizers use the public repository and pinned commit for
-architecture review; and the declared model name and endpoint (or an approved alternative) support
-fine-tuned-model assessment. The hidden-question harness does not clone or grade the repository.
-Organizers can copy individual files into `p3_eval/submissions/<team>/submission.json` or pass the
-portal's exported `submissions.json` manifest to the harness.
-
-## Evaluation Flowchart
-
-```mermaid
-flowchart TD
-    A["Team builds solution"] --> B["Submit GitHub repo + agent endpoint"]
-
-    B --> C["Submission intake"]
-    C --> C1["Clone public GitHub repo"]
-    C1 --> C2["Pin declared commit SHA"]
-    C2 --> C3["Read submission.json"]
-    C3 --> C4["Validate structure, instructions,<br>and declared endpoints"]
-
-    C4 --> D{"Submission valid?"}
-    D -- "No" --> X["Fail validation / request fix"]
-    D -- "Yes" --> H["Fine-tuned model quality<br>30%"]
-    D -- "Yes" --> I["Architecture and repository quality<br>30%"]
-    D -- "Yes" --> E["Agent health check: GET /health"]
-
-    H --> H1["Review training data preparation,<br>configuration, checkpoints, and model summary"]
-    H1 --> H2["Compare base and fine-tuned behavior"]
-    H2 --> H3["Test declared model endpoint<br>or approved assessment method"]
-
-    I --> I1["Inspect pinned GitHub commit"]
-    I1 --> I2["Review Qwen planning, runtime tool execution,<br>Nemotron synthesis, retrieval, and data flow"]
-    I2 --> I3["Assess code quality, reliability,<br>reproducibility, docs, logs, and security"]
-
-    E --> F{"Agent healthy?"}
-    F -- "No" --> Y["Hidden-question score: 0<br>for this run"]
-    F -- "Yes" --> J["Hidden-question evaluation<br>40%"]
-    J --> J1["Send hidden questions to POST /query"]
-    J1 --> J2["Qwen3.6-35B-A3B-FP8 agent-brain plans<br>and emits tool calls"]
-    J2 --> J3["Agent runtime executes tools<br>and returns structured results"]
-    J3 --> J4["Qwen reviews results<br>and completes the reasoning loop"]
-    J4 --> J5["Fine-tuned Nemotron<br>synthesizes the final answer"]
-    J5 --> J6["Response JSON contains answer"]
-    J6 --> J7["Grade only answer with<br>component-based partial credit"]
-    J7 --> J8["Apply slow penalty after 60s<br>and timeout after 300s"]
-
-    H3 --> K["Calculate weighted final score"]
-    I3 --> K
-    J8 --> K
-    Y --> K
-
-    K --> L["Public leaderboard:<br>Rank, Team, Final Score"]
-    K --> M["Private organizer diagnostics"]
-    M --> N["Sanitized per-team report"]
-    L --> Z["Final ranking + prizes"]
-```
-
-## Participant Checklist
-
-- Publish the contents of `TeamSubmission/` as the root of your fully public GitHub repo; private
-  repositories and collaborator-only access are not supported.
-- Fill in `submission.json` with final team info, IP, ports, and commit SHA.
-- Keep `agent.endpoint` reachable from the organizer machine; do not use `localhost`.
-- Confirm `GET /health` returns HTTP 200.
-- Confirm `POST /query` accepts `{"question": "..."}`.
-- Confirm `/query` returns JSON with `answer`.
-- Put source code in `src/`.
-- Put fine-tuning/training evidence, configuration, metrics, and a model summary in `training/`.
-- Include a documented comparison between the supplied base model and the fine-tuned model.
-- Make the fine-tuned model available for assessment through its declared endpoint or an organizer-approved method.
-- Use the supplied Qwen3.6-35B-A3B-FP8 `agent-brain` alias for planning, tool selection, and tool-call generation.
-- Execute Qwen's requested tool calls in the agent runtime and return structured results to the reasoning loop.
-- Set `DOMAIN_PREDICT_MODE=llm` after the fine-tuned adapter is live; do not submit with the bootstrap `mock` mode.
-- Use the fine-tuned Nemotron model to synthesize the final answer from the verified tool results.
-- Confirm the service remains correct with three simultaneous `POST /query` requests.
-- Document the complete Qwen, runtime, tool, retrieval, and Nemotron data flow in `README.md`.
-- Put non-sensitive logs in `logs/`.
-- Do not commit credentials, API keys, or hidden evaluation data.
+- [ ] `submission.json` contains real team ID, name, public GitHub URL, and the exact commit SHA
+- [ ] `agent.endpoint` uses the assigned IP, not `localhost`, and is reachable from another machine
+- [ ] `GET /health` returns HTTP 200 from a different machine
+- [ ] `POST /query` returns schema-valid JSON containing a non-empty `answer`
+- [ ] `DOMAIN_PREDICT_MODE=llm` and the adapter is served
+- [ ] Three concurrent `/query` requests return correct, unmixed responses
+- [ ] `training/` contains data prep, config, metrics, and the base-vs-fine-tuned comparison
+- [ ] No credentials, keys, or hidden evaluation data in any committed file

@@ -34,3 +34,34 @@ QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "")
 
 MAX_AGENT_STEPS = int(os.getenv("MAX_AGENT_STEPS", "10"))
+
+
+def evaluation_readiness() -> list[str]:
+    """Return blocking configuration problems for official evaluation.
+
+    The cluster bootstrap starts in ``DOMAIN_PREDICT_MODE=mock``, which
+    concatenates raw tool JSON instead of calling the fine-tuned model. Running
+    the official evaluation in that mode means the submitted agent is not using
+    the fine-tuned Nemotron model at all, which forfeits model-quality and
+    architecture credit -- and it fails silently, because the responses still
+    look like valid JSON. Everything that must be true before evaluation is
+    checked here, in one place, so ``scripts/preflight.py`` and the server
+    startup banner cannot disagree about what "ready" means.
+    """
+    problems: list[str] = []
+
+    if DOMAIN_PREDICT_MODE != "llm":
+        problems.append(
+            f"DOMAIN_PREDICT_MODE is '{DOMAIN_PREDICT_MODE}', not 'llm' -- the fine-tuned "
+            "Nemotron model is NOT being used to synthesize answers."
+        )
+    if not DOMAIN_FT_MODEL:
+        problems.append("DOMAIN_FT_MODEL is unset -- no fine-tuned model to synthesize with.")
+    if not DOMAIN_BASE_URL:
+        problems.append("DOMAIN_BASE_URL (or LITELLM_BASE_URL) is unset.")
+    if not LITELLM_BASE_URL:
+        problems.append("LITELLM_BASE_URL is unset -- the Qwen brain is unreachable.")
+    if not BRAIN_MODEL:
+        problems.append("BRAIN_MODEL is unset.")
+
+    return problems
