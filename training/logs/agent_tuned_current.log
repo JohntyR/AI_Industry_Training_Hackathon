@@ -42,3 +42,6 @@ INFO:     127.0.0.1:60966 - "POST /query HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60354 - "POST /query HTTP/1.1" 200 OK
 INFO:     127.0.0.1:35216 - "POST /query HTTP/1.1" 200 OK
 INFO:     127.0.0.1:60356 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57870 - "POST /query HTTP/1.1" 200 OK
+INFO:     10.3.0.211:39044 - "GET /health HTTP/1.1" 200 OK
+WARNING:  Invalid HTTP request received.

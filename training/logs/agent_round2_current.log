@@ -1,0 +1,39 @@
+INFO:     Started server process [141166]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55542 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55554 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36332 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55560 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45440 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45448 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44320 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44332 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44328 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46018 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46020 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56176 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56162 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59072 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59086 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41426 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34508 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34518 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59968 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38574 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58646 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53160 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58638 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39432 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38828 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38822 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48016 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38842 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46418 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58424 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49712 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38294 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37132 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51112 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51736 - "POST /query HTTP/1.1" 200 OK

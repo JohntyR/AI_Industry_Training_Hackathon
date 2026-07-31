@@ -1,0 +1,112 @@
+
+==============================================================================
+OK  MHQ001  rubric 10.0/10.0  strict 10.0/10.0  27.9s  steps=3  datasets=RBA
+  Q: From the first RBA record to the last, how many cash-rate decisions changed the rate, and how many were increases versus decreases?
+  REFERENCE: 41 of the 175 decision records changed the rate: 20 increases and 21 decreases.
+  ANSWER:    41 of the 175 RBA records changed the cash rate, with 20 increases and 21 decreases.
+
+==============================================================================
+PART MHQ035  rubric 5.0/10.0  strict 5.0/10.0  9.3s  steps=3  datasets=RBA
+  Q: Across the 2011-2013 easing period, how many cuts occurred and how far did the target fall?
+  REFERENCE: Eight cuts occurred: 2 in 2011, 4 in 2012, and 2 in 2013. They totalled -2.25 percentage points, taking the target from 4.75% before the first cut to 2.50% at the end of 2013.
+  ANSWER:    Across 2011-2013 the RBA changed the target 8 times: 8 cuts and 0 hikes (2 in 2011, 4 in 2012, 2 in 2013). The target was reduced by 2.25 percentage points, first set at 4.75% before the first move, and ended at 2.50%.
+    [C02] -5.0 MISSING (required) num:-2.25
+        expected: They totalled -2.25 percentage points, taking the target from 4.75% before the first cut to 2.50% at the end of 2013.
+
+==============================================================================
+OK  MHQ040  rubric 10.0/10.0  strict 10.0/10.0  5.9s  steps=3  datasets=ASX
+  Q: What are the dimensions and common date range of the ASX dataset?
+  REFERENCE: There are 18 ticker files, each containing 1,774 rows, covering 2 Jan 2015 through 30 Dec 2021.
+  ANSWER:    Coverage of 18 tickers across 1774 rows, from 2015-01-02 to 2021-12-30.
+
+==============================================================================
+OK  MHQ045  rubric 10.0/10.0  strict 10.0/10.0  8.4s  steps=3  datasets=ASX
+  Q: Excluding Tabcorp, which ticker had the best and worst 2018 return?
+  REFERENCE: BHP.AX was best at +22.17%; AMP.AX was worst at -50.04%.
+  ANSWER:    BHP.AX returned 22.17% in 2018 (the best among 1707 ASX-listed companies, excluding Tabcorp) and AMP.AX returned -50.04% (the worst, out of the same 1707).
+
+==============================================================================
+OK  MHQ049  rubric 10.0/10.0  strict 10.0/10.0  5.9s  steps=3  datasets=ASX
+  Q: Excluding Tabcorp, which ticker has the highest average daily volume over the full sample?
+  REFERENCE: AMP.AX has the highest average daily volume at 11,635,671.71 shares per trading day.
+  ANSWER:    AMP.AX has the highest average daily volume of 11,635,671.71 in the full sample, excluding Tabcorp.
+
+==============================================================================
+OK  MHQ055  rubric 10.0/10.0  strict 10.0/10.0  17.2s  steps=3  datasets=ASX
+  Q: Rank the three worst non-Tabcorp full-sample maximum drawdowns and identify each peak and trough date.
+  REFERENCE: 1) AMP.AX -82.45%, 20 Mar 2015 to 17 Dec 2021; 2) AGL.AX -76.24%, 10 Apr 2017 to 16 Nov 2021; 3) QAN.AX -71.08%, 19 Dec 2019 to 19 Mar 2020.
+  ANSWER:    Ranked top 3 worst non-Tabcorp maximum drawdowns: 1. AMP.AX peaked at 20 Mar 2015, troughed at 17 Dec 2021 (-82.45%); 2. AGL.AX peaked at 10 Apr 2017, troughed at 16 Nov 2021 (-76.24%); 3. QAN.AX peaked at 19 Dec 2019, troughed at 19 Mar 2020 (-71.08%).
+
+==============================================================================
+OK  MHQ058  rubric 10.0/10.0  strict 10.0/10.0  31.2s  steps=3  datasets=RBA,AFR
+  Q: Retrieve the AFR article "Travel stocks take off on vaccine rollout" published 23 Feb 2021 and use the RBA cash-rate target in force on that date. Cla
+  REFERENCE: The RBA cash-rate target in force was 0.10%. The article's sentiment is positive. The likely direction for ASX travel shares is upward.
+  ANSWER:    On 2021-02-23 the cash rate target in force was 0.1%, a time when investors were optimistic about the vaccine rollout's impact on the economy, driving up travel stocks like Webjet, Corporate Travel Management and Flight Centre; the sentiment was positive, with ASX travel shares likely to rise.
+
+==============================================================================
+OK  MHQ061  rubric 10.0/10.0  strict 10.0/10.0  17.7s  steps=3  datasets=AFR
+  Q: Using a case-insensitive once-per-record whole-word unemployment search, which year and which month have the highest AFR counts?
+  REFERENCE: It peaked in 2020 with 1,452 matching records. May 2020 is the peak month with 218.
+  ANSWER:    Coverage of \bunemployment\b peaked in 2020 with 1452 records, and the single peak month was May 2020 with 218 records.
+
+==============================================================================
+OK  MHQ067  rubric 10.0/10.0  strict 2.0/10.0  23.4s  steps=3  datasets=RBA,AFR
+  Q: Retrieve the AFR article "Why investors don't believe the RBA on interest rates" published 25 Nov 2021 and use the RBA cash-rate target in force on th
+  REFERENCE: The RBA cash-rate target in force was 0.10%. The article's sentiment is mixed with a negative bias. The likely broad-ASX impact is mixed-to-down, with rate-sensitive shares under pressure.
+  ANSWER:    On 2021-11-25 the cash rate target in force was 0.1%, set by the decision effective 3 Nov 2021. The article reports negative sentiment, with the ASX likely to rise as the bond market revolts against the RBA, causing a de facto interest rate rise.
+    [C02] soft-miss (not in scoring_notes) word:mixed  <- add for insurance
+    [C03] soft-miss (not in scoring_notes) word:mixed  <- add for insurance
+
+==============================================================================
+OK  MHQ072  rubric 10.0/10.0  strict 10.0/10.0  53.9s  steps=3  datasets=RBA,ASX
+  Q: After the 5 Jun 2019 RBA cut, report the new target and the 5-12 Jun returns for the non-Tabcorp basket, CBA.AX, NAB.AX, ANZ.AX, BHP.AX, and RIO.AX.
+  REFERENCE: The RBA cut to 1.25%. From 5 to 12 Jun, the non-Tabcorp basket rose +2.88%; CBA +0.60%, NAB +1.39%, ANZ +0.89%, BHP +5.89%, and RIO +2.91%.
+  ANSWER:    Coverage of the non-Tabcorp basket from 5 Jun 2019 to 12 Jun 2019 returned 2.88%, the arithmetic mean of the six individual returns (0.6%, 1.39%, 0.89%, 5.89%, 2.91%, 0.6%) was 2.88%. The cash rate target in force from 5 Jun 2019 was 1.25%.
+
+==============================================================================
+PART MHQ074  rubric 7.5/10.0  strict 7.5/10.0  40.4s  steps=4  datasets=RBA,ASX
+  Q: Across the three 2019 RBA cuts, what was the non-Tabcorp basket's one-week return after each effective date?
+  REFERENCE: After 5 Jun the basket rose +2.88% by 12 Jun; after 3 Jul it rose +0.24% by 10 Jul; after 2 Oct it fell -2.17% by 9 Oct. The cuts took the target to 1.25%, 1.00%, and 0.75%, respectively.
+  ANSWER:    From 5 Jun 2019 to 12 Jun 2019 the non-Tabcorp basket returned 2.88%, the arithmetic mean of its 17 constituents (e.g. AGL.AX -3.55%). The window covering 3 Jul 2019 to 10 Jul 2019 had a 0.24% return, and the window 2 Oct 2019 to 9 Oct 2019 returned -2.17%.
+    [C04] -2.5 MISSING (required) num:1.25, num:1, num:0.75
+        expected: The cuts took the target to 1.25%, 1.00%, and 0.75%, respectively.
+
+==============================================================================
+OK  MHQ076  rubric 10.0/10.0  strict 10.0/10.0  20.0s  steps=3  datasets=ASX,AFR
+  Q: For 2021, report the once-per-record whole-word QBE AFR count and QBE.AX's first-to-last annual return and rank among non-Tabcorp constituents.
+  REFERENCE: There are 369 AFR records matching whole-word QBE in 2021, and QBE.AX had the best non-Tabcorp 2021 return at +35.57%.
+  ANSWER:    369 AFR articles match \bQBE\b in 2021, and QBE.AX returned 35.57% over the full 2021 calendar, ranking 1st among non-Tabcorp constituents.
+
+==============================================================================
+PART MHQ080  rubric 9.0/10.0  strict 9.0/10.0  22.3s  steps=3  datasets=RBA,ASX,AFR
+  Q: Retrieve the AFR article "Energy stocks shine as vaccines fuel oil rally" published 28 Nov 2020 and use the RBA cash-rate target in force on that date
+  REFERENCE: The RBA cash-rate target in force was 0.10%. The article's sentiment is positive. The likely direction for ASX energy shares is upward. The non-Tabcorp basket rose 2.37% from 30 Nov to 7 Dec 2020. The observed five-session move confirmed the inferred upward direction.
+  ANSWER:    Coverage of "Energy stocks shine as vaccines fuel oil rally" on 28 Nov 2020 was positive, with the ASX Energy Index up 29.8% since October. The first five-session window of the Tabcorp basket (30 Nov-7 Dec 2020) returned 2.37%, confirming the direction of the market.
+    [C01] -1.0 MISSING (required) num:0.1
+        expected: The RBA cash-rate target in force was 0.10%.
+
+==============================================================================
+PART MHQ084  rubric 6.7/10.0  strict 6.7/10.0  26.7s  steps=7  datasets=RBA,ASX,AFR
+  Q: For 2019, report the RBA cut count, cumulative change and year-end target; the AFR rate/RBA-pattern count; and the non-Tabcorp ASX basket's simple ave
+  REFERENCE: The RBA cut three times for -0.75 percentage points and ended at 0.75%. AFR contains 3,181 records matching interest rates?|cash rate|rate cut|rate hike|\\bRBA\\b. The non-Tabcorp ASX average return was +20.11%.
+  ANSWER:    Coverage for \bRBA\b in 2019 was 1283; the 2019 ASX window returned 20.11%. The RBA cut count in 2019 was 3, the cumulative change -0.75 (from 1.5% to 0.75%).
+    [C02] -3.3 MISSING (required) num:3181
+        expected: AFR contains 3,181 records matching interest rates?|cash rate|rate cut|rate hike|\\bRBA\\b.
+
+==============================================================================
+PART MHQ090  rubric 6.7/10.0  strict 3.3/10.0  6.5s  steps=3  datasets=RBA,ASX,AFR
+  Q: Can the three supplied datasets support a fully observed analysis of how AFR news and ASX prices reacted to the 2022-2023 RBA tightening cycle?
+  REFERENCE: No. The RBA data covers the 13 hikes from May 2022 to Nov 2023, but both AFR and ASX datasets end in 2021. A three-dataset reaction analysis is therefore unsupported by the supplied evidence.
+  ANSWER:    Coverage of AFR was 2015-12-31 and ASX 2015-01-02 to 2021-12-30, with the RBA coverage spanning 3 Feb 2010 to 17 Jun 2026.
+    [C02] -3.3 MISSING (required) num:2022
+        expected: The RBA data covers the 13 hikes from May 2022 to Nov 2023, but both AFR and ASX datasets end in 2021.
+    [C03] soft-miss (not in scoring_notes) word:unsupported  <- add for insurance
+
+##############################################################################
+LOCAL SCORE (rubric): 134.8/150.0 = 89.9% over 15 questions
+LOCAL SCORE (strict): 123.5/150.0 = 82.3%  <- every reference token present
+  full credit: 10  partial: 5  zero: 0  failed: 0
+  PARTIAL: MHQ035, MHQ074, MHQ080, MHQ084, MHQ090
+
+Note: token-presence grading is stricter than the LLM judge on phrasing and
+cannot judge sentiment/explanation quality — eyeball the prose above for those.
