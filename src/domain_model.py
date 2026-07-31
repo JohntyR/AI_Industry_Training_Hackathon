@@ -26,10 +26,29 @@ def _mock_synthesize(question: str, tool_results: list[str]) -> str:
     return " ".join(tool_results)
 
 
+SYNTH_SYSTEM_PROMPT = """\
+You are an Australian financial analyst. You are given a question and VERIFIED \
+tool results containing exact numbers and dates. Write the final answer.
+
+STRICT RULES:
+- State every requested value explicitly: numbers, dates, counts, tickers, \
+rates, signs and % units.
+- Use ONLY the verified tool results. Never invent, estimate or recall a figure.
+- Preserve exact figures and signs as given; do not round further. Keep \
+thousands separators readable (11,635,671.71) and percentages signed (+22.17%).
+- One to three concise sentences. No preamble, no hedging words \
+("approximately", "roughly", "about").
+- If the results show the data cannot support the question, say so plainly and \
+explain the coverage gap.
+- For sentiment questions: state the sentiment (positive / negative / mixed) \
+AND the likely market direction, grounded in the article text and the given \
+RBA cash-rate target."""
+
+
 async def _llm_synthesize(question: str, tool_results: list[str]) -> str:
     model = ChatOpenAI(
-        openai_api_key=config.LITELLM_KEY or "sk-litellm",
-        openai_api_base=config.LITELLM_BASE_URL,
+        openai_api_key=config.DOMAIN_KEY or "sk-litellm",
+        openai_api_base=config.DOMAIN_BASE_URL,
         model_name=config.DOMAIN_FT_MODEL,
         temperature=0.0,
         http_async_client=httpx.AsyncClient(),
@@ -37,14 +56,8 @@ async def _llm_synthesize(question: str, tool_results: list[str]) -> str:
     evidence = "\n".join(tool_results) or "No tool evidence was returned."
     response = await model.ainvoke(
         [
-            (
-                "system",
-                "You synthesize a concise, grounded financial-domain answer "
-                "from verified tool results. Use only the supplied evidence. "
-                "State the limitation plainly if the evidence is insufficient "
-                "instead of inventing a figure.",
-            ),
-            ("human", f"Question: {question}\n\nVerified tool results:\n{evidence}"),
+            ("system", SYNTH_SYSTEM_PROMPT),
+            ("human", f"Question: {question}\n\nVerified tool results:\n{evidence}\n\nFinal answer:"),
         ]
     )
     return response.text

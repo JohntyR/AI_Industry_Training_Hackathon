@@ -19,6 +19,13 @@ LITELLM_KEY = os.getenv("LITELLM_KEY", "")
 BRAIN_MODEL = os.getenv("BRAIN_MODEL", "agent-brain")
 DOMAIN_FT_MODEL = os.getenv("DOMAIN_FT_MODEL", "domain-ft")
 
+# The brain and the synthesis model are served by DIFFERENT nodes when LiteLLM
+# is not fronting them (Qwen on this box :8000, Nemotron on the model node
+# :8001). Defaults to LITELLM_BASE_URL so a single LiteLLM gateway still works
+# unchanged; set DOMAIN_BASE_URL to talk to the model node directly.
+DOMAIN_BASE_URL = os.getenv("DOMAIN_BASE_URL", "") or LITELLM_BASE_URL
+DOMAIN_KEY = os.getenv("DOMAIN_KEY", "") or LITELLM_KEY
+
 # "mock" (bootstrap default) or "llm" (must be set before official evaluation).
 DOMAIN_PREDICT_MODE = os.getenv("DOMAIN_PREDICT_MODE", "mock").strip().lower()
 
