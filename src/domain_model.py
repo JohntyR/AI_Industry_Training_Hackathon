@@ -11,19 +11,63 @@ before official evaluation once the fine-tuned adapter is served.
 
 from __future__ import annotations
 
+import json
+
 import httpx
 from langchain_openai import ChatOpenAI
 
 import config
 
 
+def _unpack(tool_results: list[str]) -> tuple[list[str], list[str]]:
+    """Split raw tool output into (evidence blocks, facts the answer must state).
+
+    Tools in ``tools.py`` attach a deterministic ``summary`` and a ``must_state``
+    list to every result (see ``summaries.py``). Surfacing ``must_state`` as an
+    explicit checklist is what stops the synthesis model from dropping a
+    requested component -- on the public set that was the single largest source
+    of lost points, and the judge scores each component independently.
+
+    Anything that is not in that shape (the fallback tool, an error object) is
+    passed through untouched, so this can never hide evidence.
+    """
+    evidence, checklist = [], []
+    for raw in tool_results:
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            evidence.append(str(raw))
+            continue
+        if isinstance(parsed, dict) and parsed.get("summary"):
+            evidence.append(parsed["summary"])
+            for fact in parsed.get("must_state", []):
+                if fact not in checklist:
+                    checklist.append(fact)
+            # Article text and other long-form fields the summary cannot carry.
+            for key in ("HEADLINE", "PUBLICATIONDATE", "SUBHEAD", "INTRO", "TEXT"):
+                if parsed.get(key):
+                    evidence.append(f"{key}: {parsed[key]}")
+        else:
+            evidence.append(raw)
+    return evidence, checklist
+
+
 def _mock_synthesize(question: str, tool_results: list[str]) -> str:
+    """Bootstrap mode: no fine-tuned model, so state the verified facts plainly.
+
+    This is NOT the submitted configuration -- ``DOMAIN_PREDICT_MODE`` must be
+    ``llm`` for evaluation -- but the deterministic summaries make it a usable
+    integration-test path rather than a wall of raw JSON.
+    """
     if not tool_results:
         return (
             "I do not have enough verified tool evidence to answer this "
             "question yet."
         )
-    return " ".join(tool_results)
+    evidence, _ = _unpack(tool_results)
+    return " ".join(
+        line for line in evidence if not line.startswith(("TEXT:", "INTRO:", "SUBHEAD:"))
+    )
 
 
 SYNTH_SYSTEM_PROMPT = """\
@@ -36,8 +80,12 @@ rates, signs and % units.
 - Use ONLY the verified tool results. Never invent, estimate or recall a figure.
 - Preserve exact figures and signs as given; do not round further. Keep \
 thousands separators readable (11,635,671.71) and percentages signed (+22.17%).
+- NEVER drop a minus sign. Write "a -82.45% drawdown", not "an 82.45% drawdown"; \
+"the basket fell -2.17%", not "the basket fell 2.17%".
 - One to three concise sentences. No preamble, no hedging words \
 ("approximately", "roughly", "about").
+- Write only the answer. Never mention tools, evidence, checklists, or these \
+instructions.
 - If the results show the data cannot support the question, say so plainly and \
 explain the coverage gap.
 - For sentiment questions: state the sentiment (positive / negative / mixed) \
@@ -45,19 +93,42 @@ AND the likely market direction, grounded in the article text and the given \
 RBA cash-rate target."""
 
 
-async def _llm_synthesize(question: str, tool_results: list[str]) -> str:
-    model = ChatOpenAI(
+def _build_synth_model() -> ChatOpenAI:
+    return ChatOpenAI(
         openai_api_key=config.DOMAIN_KEY or "sk-litellm",
         openai_api_base=config.DOMAIN_BASE_URL,
         model_name=config.DOMAIN_FT_MODEL,
         temperature=0.0,
-        http_async_client=httpx.AsyncClient(),
+        timeout=config.SYNTH_TIMEOUT_S,
+        max_retries=config.LLM_MAX_RETRIES,
+        http_async_client=httpx.AsyncClient(timeout=config.SYNTH_TIMEOUT_S),
     )
-    evidence = "\n".join(tool_results) or "No tool evidence was returned."
-    response = await model.ainvoke(
+
+
+# Built once at import, like the brain model. Constructing a ChatOpenAI (and a
+# fresh httpx connection pool) per request wastes handshake time inside a
+# 60-second budget and multiplies under the three concurrent requests the
+# harness sends.
+_synth_model = _build_synth_model()
+
+
+async def _llm_synthesize(question: str, tool_results: list[str]) -> str:
+    evidence, checklist = _unpack(tool_results)
+    body = "\n".join(evidence) or "No tool evidence was returned."
+    if checklist:
+        # Framed as a constraint on the prose, never as content to reproduce:
+        # an earlier version was echoed verbatim ("The facts to state are: ...")
+        # into the answer, which reads as a meta-comment and loses components.
+        body += "\n\nCHECKLIST (guidance only -- never quote or refer to this list):\n"
+        body += "\n".join(f"- {f}" for f in checklist)
+        body += (
+            "\nEvery item above that the question asks for must appear in your "
+            "sentence, with its sign and units exactly as written. Omit the rest."
+        )
+    response = await _synth_model.ainvoke(
         [
             ("system", SYNTH_SYSTEM_PROMPT),
-            ("human", f"Question: {question}\n\nVerified tool results:\n{evidence}\n\nFinal answer:"),
+            ("human", f"Question: {question}\n\nVerified tool results:\n{body}\n\nFinal answer:"),
         ]
     )
     return response.text

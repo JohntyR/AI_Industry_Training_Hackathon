@@ -45,8 +45,9 @@ flowchart TD
 | Component | File | Responsibility |
 |---|---|---|
 | Reasoning brain | [src/agent_graph.py](src/agent_graph.py) | Qwen (`BRAIN_MODEL`) plans the approach, selects a metric, emits tool calls and arguments, reads results, decides whether another call is needed. Not fine-tuned. Never writes the answer. |
-| Tool runtime | [src/tools.py](src/tools.py) | Typed LangChain tool surface. Validates and coerces Qwen's arguments, executes the call, returns structured results. Errors are returned as data, never raised. |
+| Tool runtime | [src/tools.py](src/tools.py) | Eleven task-shaped LangChain tools plus a raw fallback. Validates and coerces Qwen's arguments, executes the call, returns structured results. Errors are returned as data, never raised. |
 | Deterministic engine | [src/query_data.py](src/query_data.py) | Pure-stdlib parsing and calculation over the local datasets. The only source of dataset-derived numbers. |
+| Result formatting | [src/summaries.py](src/summaries.py) | Turns each engine result into a judge-ready `summary` sentence and a `must_state` fact list, so number formatting is deterministic rather than left to an 8B model. |
 | Answer synthesis | [src/domain_model.py](src/domain_model.py) | Fine-tuned Nemotron (`DOMAIN_FT_MODEL`) receives the question plus accumulated verified tool results and writes the final `answer`. |
 | API surface | [src/server.py](src/server.py) | `GET /health`, `POST /query`. Guarantees a valid non-empty `answer` on every path, including model or tool failure. |
 
@@ -57,17 +58,40 @@ verified result. This is what makes answers reproducible: the organizers score b
 tool calls against the same data, so a calculation done inside a model — even a correct one — is
 unverifiable and drifts between runs.
 
+### Response-time budget
+
+Scoring is time-sensitive: full points at ≤60 s, a 20% deduction beyond it, zero past 300 s. The
+request therefore runs against a wall-clock budget rather than finishing whenever it finishes.
+
+```text
+REQUEST_DEADLINE_S = 55           total target, under the 60s full-credit threshold
+├── brain loop      40s           REQUEST_DEADLINE_S - SYNTH_RESERVE_S
+└── synthesis       15s reserve   never starved, min SYNTH_MIN_S even if the brain overran
+```
+
+The brain loop is **streamed**, not awaited as a single call. `ainvoke` returns the final state or
+nothing at all, so a failure at step 5 discards the tool results from steps 1–4 and synthesis runs
+with no evidence — turning a partial score into a zero. Streaming keeps the latest state after every
+step, so a timeout or a crash still leaves usable evidence to answer from.
+
+Synthesis is guaranteed a minimum slice even when the brain overran the budget. That can push a
+request past 60 s and take the 20% penalty, and it is deliberate: a real answer minus 20% scores far
+better than a fast answer made of raw JSON.
+
 ### Failure containment
 
 An uncaught exception on `/query` returns HTTP 500 with no `answer` field, which the harness scores
 as zero. Every failure path is therefore contained:
 
-- A tool exception is caught in [tools.py](src/tools.py) and returned as `{"error", "hint",
-  "metric_reference"}` so the brain can read the problem and retry with corrected arguments.
-- A brain-loop failure is caught in [server.py](src/server.py); synthesis still runs on whatever
-  tool results were collected.
-- A synthesis failure falls back to the raw tool results, then to an explicit statement of the
-  limitation. `answer` is never empty.
+- A tool exception is caught in [tools.py](src/tools.py) and returned as `{"error", "hint", ...}` so
+  the brain can read the problem and retry with corrected arguments.
+- A brain-loop timeout or crash is caught in [agent_graph.py](src/agent_graph.py) and returns a
+  `BrainRun` carrying the partial message state; synthesis runs on whatever evidence exists.
+- A synthesis timeout or failure falls back to the raw tool results, then to an explicit statement
+  of the limitation. `answer` is never empty.
+- Every degradation is recorded in `tool_trace` under an underscore-prefixed pseudo-tool
+  (`_brain_timeout`, `_synth_timeout`, …), which keeps it out of the evidence passed to synthesis
+  while leaving it visible in organizer diagnostics.
 
 ---
 
@@ -83,6 +107,7 @@ as zero. Every failure path is therefore contained:
 │   ├── agent_graph.py         Qwen planning / tool-calling loop (LangGraph)
 │   ├── tools.py               typed tool surface over the deterministic engine
 │   ├── query_data.py          deterministic RBA/ASX/AFR calculations (stdlib only)
+│   ├── summaries.py           judge-ready formatting of engine results
 │   ├── domain_model.py        fine-tuned Nemotron answer synthesis
 │   ├── config.py              environment configuration
 │   └── langgraph.json         LangGraph dev-server config
@@ -120,6 +145,13 @@ DOMAIN_PREDICT_MODE=llm
 
 MAX_AGENT_STEPS=10
 HACKATHON_DATA_DIR=/absolute/path/to/data set
+
+# Response-time budget (seconds). Defaults shown; see Response-Time Budget below.
+REQUEST_DEADLINE_S=55
+SYNTH_RESERVE_S=15
+SYNTH_MIN_S=12
+BRAIN_TIMEOUT_S=30
+SYNTH_TIMEOUT_S=20
 ```
 
 `DOMAIN_PREDICT_MODE` must be `llm` for evaluation. The `mock` value is the documented cluster
@@ -198,28 +230,64 @@ each request carries its own message list.
 
 ## Tool Reference
 
-Two tools are exposed to the brain. Both return JSON strings; both return `{"error": ...}` rather
-than raising, so a bad call is recoverable inside the loop.
+Eleven task-shaped tools plus one fallback, defined in [src/tools.py](src/tools.py). Each covers a
+single question family with a closed argument set, so an invalid call is largely unrepresentable.
+All of them route through the one deterministic entry point `query_data.query_data()`, so there is
+exactly one code path to the data.
 
-### `query_data(dataset, metric, ...)`
-
-| Dataset | Metrics |
+| Tool | Answers |
 |---|---|
-| `rba` | `count`, `count_changes`, `count_increases`, `count_decreases`, `extremes`, `lookup_rate`, `max_hold_streak`, `period_summary`, `list` |
-| `asx` | `dimensions`, `annual_return`, `full_sample_return`, `rank_annual_returns`, `rank_full_sample_returns`, `avg_volume`, `max_drawdown`, `window_return`, `basket_window_return`, `volatility`, `correlation`, `quote` |
-| `afr` | `count`, `count_year`, `count_by_year`, `count_by_month`, `peak_year_and_month`, `share`, `find_article` |
-| `meta` | `coverage` — dataset date ranges, for "can the data support this?" questions |
+| `rba_rate_on_date(date)` | The cash-rate target in force **on** a date — the latest decision at or before it, never the nearest. |
+| `rba_rate_changes(start_year?, end_year?)` | Change/increase/decrease counts across the dataset, or a cycle's cuts, hikes, split by year, cumulative move, and endpoint targets. |
+| `rba_rate_extremes()` | Highest and lowest targets, each with first effective date, board decision date, and record count. |
+| `rba_longest_hold()` | Longest stretch between non-zero changes: days, both dates, rate held, rate after. |
+| `asx_returns(scope, …)` | First-to-last close returns for `ticker`, `basket`, or a full `ranking`, over a year, a window, or the full sample. |
+| `asx_risk(measure, …)` | Maximum drawdown (single or ranked, with peak and trough dates), volatility, or pairwise correlation. |
+| `asx_market_data(measure, …)` | An exact OHLCV row, or the average-daily-volume ranking. |
+| `asx_event_study(event_dates, …)` | Reaction to dated events: rate in force, session window, basket return and per-ticker returns, for any number of events **in one call**. |
+| `afr_count(pattern\|preset, group_by, year?)` | Article counts — total, by year, by month, peak year *and* month together, or share of records. |
+| `afr_find_article(headline, date?)` | One article's full text for sentiment questions; paraphrase-tolerant matching. |
+| `dataset_coverage()` | Shape and date range of all three datasets, and whether a question is answerable at all. |
+| `query_data(dataset, metric, params)` | **Fallback.** Raw engine access for question families the tools above do not anticipate. |
 
-Arguments are flat and typed (`ticker`, `year`, `pattern`, `start`, `end`, …) rather than a nested
-blob, so the brain can express the call it wants. The runtime coerces types before dispatch: vLLM's
-`qwen3_xml` tool-call parser extracts every `<parameter=...>` value as a string, so `year` arrives
-as `"2018"` and `exclude_tabcorp` as `"true"`.
+### Why task-shaped tools rather than one `query_data(dataset, metric, …)`
 
-### `afr_get_article(headline, date)`
+The handout's reference interface is a single tool with a free-text `metric` and a bag of optional
+parameters. That shape makes the brain guess two things at once — which metric names exist, and
+which parameters pair with each — and on the public set it guessed wrong in ways that cost real
+points: MHQ084 invented its own AFR regex and returned 1,283 where the reference is 3,181.
 
-Fetches one AFR article's text for sentiment questions. Matching is paraphrase-tolerant
-(stopword-stripped token overlap with light finance-synonym expansion, headline weighted 3×, anchored
-by publication date when supplied), so an approximate headline still resolves.
+Narrow tools with `Literal` enums remove that discretion. The fallback stays registered last because
+roughly 75 of the ~90 benchmark questions are unseen, and a question family we did not anticipate
+should degrade to a raw engine call rather than to no answer at all.
+
+### What every tool returns
+
+JSON with the computed fields plus two presentation keys built in [src/summaries.py](src/summaries.py):
+
+- **`summary`** — one judge-ready sentence, already signed, rounded and separated the way the
+  reference answers write it (`+22.17%`, `11,635,671.71`, `0.10%`, `3 Nov 2010`).
+- **`must_state`** — the individual facts the answer has to contain. [src/domain_model.py](src/domain_model.py)
+  turns this into an explicit checklist in the synthesis prompt.
+
+Formatting is deliberately owned by the deterministic layer rather than by an 8B model. Our public-set
+losses were overwhelmingly omissions, not miscalculations — MHQ001 computed 41/20/21 correctly but
+dropped "of the 175 records"; MHQ074 computed all three basket returns but never stated the resulting
+targets. The fine-tuned Nemotron still writes the answer; it just never has to invent a number or a
+format.
+
+### Argument handling
+
+vLLM's `qwen3_xml` tool-call parser extracts every `<parameter=…>` value as a **string**, so `year`
+arrives as `"2018"`, `exclude_tabcorp` as `"true"`, and a list as `"CBA,NAB"` or `"['CBA','NAB']"`.
+List fields coerce in a `mode="before"` Pydantic validator, so they never fail schema validation and
+cost a retry. Ticker aliases (`rio tinto` → `RIO.AX`), date spellings (`23 Feb 2021`, `20210223`,
+`2021-02-23`) and bare AFR terms (`QBE` → `\bQBE\b`) are normalised into the exact forms the
+reference answers were computed with.
+
+Failures return `{"error", "hint", <arguments as received>}`. LangGraph's `ToolNode` would already
+convert an exception into a `ToolMessage`, but a raw traceback tells the brain nothing about how to
+fix the call — and every wasted retry is another round trip against the 60-second budget.
 
 ---
 
@@ -245,17 +313,69 @@ calculations, so a different search scope or field set will not match the refere
 ### Engine regression
 
 [tests/test_public.py](tests/test_public.py) asserts that `query_data` reproduces the exact figures
-in all 15 public reference answers, at the tolerances above. This runs without any model server.
+in all 15 public reference answers, at the tolerances above — 54 checks. This runs without any model
+server.
 
 ```bash
 python tests/test_public.py
 ```
 
+### Tool surface
+
+[tests/test_tools.py](tests/test_tools.py) tests the layer the *model* actually touches: that each
+public question is answerable through its intended tool, that every reference fact reaches the
+`summary`/`must_state` text the synthesis model reads, that arguments survive the string-typed shapes
+vLLM's XML parser produces, and that bad calls return readable errors instead of raising — 39 checks,
+also model-free.
+
+```bash
+python tests/test_tools.py
+```
+
+### Runtime behaviour
+
+[tests/test_runtime.py](tests/test_runtime.py) covers the response-time budget, partial-evidence
+salvage, and three concurrent requests, using fakes in place of the model servers.
+
+```bash
+python tests/test_runtime.py
+```
+
+### Runtime behaviour
+
+[tests/test_runtime.py](tests/test_runtime.py) covers the paths that never execute during a healthy
+dev loop and are therefore most likely to be broken when they matter: a brain loop that overruns the
+budget, one that crashes halfway, a synthesis call that hangs, and three requests in flight at once.
+The brain graph and the synthesis call are replaced with controllable fakes, so this tests the
+orchestration — not the agent.
+
+```bash
+python tests/test_runtime.py
+```
+
 ### End-to-end
 
-The full pipeline is run against the 15 public calibration questions and the per-question trace is
-written to [logs/langchain_public_eval.json](logs/langchain_public_eval.json), including the tool
-calls made and the answer produced.
+[scripts/eval_public.py](scripts/eval_public.py) is the only check that exercises the whole
+submitted pipeline the way the organizers will — over HTTP against the running agent, with Qwen
+planning, the runtime executing tools, and the fine-tuned Nemotron writing the answer.
+
+```bash
+uvicorn server:app --app-dir src --port 5000     # in another shell
+python scripts/eval_public.py
+python scripts/eval_public.py --concurrency 3    # mirror the harness default
+python scripts/eval_public.py --ids MHQ074 --verbose
+```
+
+It scores the way the harness scores: component-based partial credit **plus the response-time
+penalty**, which is part of the real score and invisible if you only look at correctness. It also
+reports how many answers were produced from **zero tool results** — an ungrounded answer can still
+score by coincidence when a generic refusal happens to satisfy a label-only component, so a run with
+any ungrounded answers is reported as invalid and exits non-zero.
+
+Results are written to [logs/langchain_public_eval.json](logs/langchain_public_eval.json) (the
+recorded run, also replayed as fixed evidence by the base-vs-fine-tuned comparison) and
+`logs/public_eval_summary.md`. Note that a run **overwrites** the recorded log — keep a copy if the
+current one is the last known-good pipeline trace.
 
 The public questions are calibration cases only — no question-ID-specific answers are hard-coded
 anywhere in the agent.
@@ -277,20 +397,23 @@ Documented honestly rather than hidden; each is a known gap, not an unknown one.
 
 **Runtime**
 
-- No end-to-end deadline. Model calls have no explicit timeout, so a slow brain loop can cross the
-  60-second penalty threshold on multi-part questions.
-- If the brain loop raises mid-run, tool results already collected inside the graph are lost —
-  synthesis then runs with no evidence. Streaming the graph and accumulating messages incrementally
-  would preserve partial evidence.
-- Dataset caches load lazily. The first AFR question pays roughly 2.5 s to parse the 780 MB corpus.
+- **Brain context window.** The served brain reports `max_model_len=4096`, while the system prompt
+  plus the tool schemas already cost roughly 3,750 tokens — leaving almost nothing for the question,
+  the tool results, and the reply. Requests fail with HTTP 400 until the brain is served with a
+  larger `--max-model-len` or the tool surface is trimmed.
+- The deadline is wall-clock, not per-component. When it expires the answer is synthesized from
+  partial evidence, so it will be missing components — partial credit, not full.
+- Synthesis is guaranteed a minimum slice even if that pushes the request past 60 s and into the
+  20% slow-penalty. This is a deliberate trade against returning raw tool JSON.
+- No grounding verification: figures in the final answer are not checked back against the tool
+  results, so a synthesis model that invents a number is not caught.
 
 **Tool layer**
 
 - Metrics accept and silently ignore parameters they do not use — for example
   `rba/count_decreases(year=2019)` returns the all-time count with no error. Per-metric argument
   validation is needed.
-- No metric returns the basket's average *annual* return, and the ticker universe cannot be
-  enumerated from a tool, so the brain has no grounded route to either.
+- No metric returns the basket's average *annual* return, so the brain has no grounded route to it.
 - `find_article` truncates article text to 4,000 characters, which can drop sentiment evidence.
 - 92 AFR records have a blank `PUBLICATIONDATE` and form an empty-string bucket in
   `count_by_year` / `count_by_month`.

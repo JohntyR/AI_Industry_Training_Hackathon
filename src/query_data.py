@@ -235,6 +235,10 @@ def _rba(metric, **p):
             "cumulative_change": cum,
             "rate_before": pre_rate,
             "rate_after": sub[-1]["target"],
+            # The dates the cycle actually spans, which are what a question about
+            # "the 2022-2023 tightening cycle" expects to be quoted back.
+            "first_change_date": sub[0]["date_str"],
+            "last_change_date": sub[-1]["date_str"],
         }
 
     if metric == "list":
@@ -517,9 +521,16 @@ def _asx_event_study(event_dates, horizon_days=7, horizon_sessions=None,
     ("the 5-12 Jun return"); ``horizon_sessions`` measures it in trading sessions
     from the window start ("the first five-session window after publication") and
     takes precedence when supplied.
+
+    ``tickers`` names companies to report INDIVIDUALLY; it does not redefine the
+    basket. Questions in this family ask for both at once -- "the returns for the
+    non-Tabcorp basket, CBA, NAB, ANZ, BHP and RIO" -- so narrowing the basket to
+    the named tickers would answer a different question. For a basket of chosen
+    constituents, use asx/basket_window_return with an explicit ticker list.
     """
     calendar = _trading_calendar()
-    universe = [_norm(t) for t in tickers] if tickers else _ticker_universe(exclude_tabcorp)
+    basket_universe = _ticker_universe(exclude_tabcorp)
+    reported = [_norm(t) for t in tickers] if tickers else []
     if isinstance(event_dates, str):
         event_dates = [event_dates]
 
@@ -547,13 +558,18 @@ def _asx_event_study(event_dates, horizon_days=7, horizon_sessions=None,
             i1 = max(ends[-1], i0)
         d0, d1 = calendar[i0], calendar[i1]
 
-        per_ticker, returns = {}, []
-        for t in universe:
-            rows = [r for r in _load_asx(t) if d0 <= r["date"] <= d1]
-            if len(rows) >= 2:
-                pct = (rows[-1]["close"] / rows[0]["close"] - 1.0) * 100.0
-                per_ticker[t] = round(pct, 2)
-                returns.append(pct)
+        def window_return(ticker):
+            rows = [r for r in _load_asx(ticker) if d0 <= r["date"] <= d1]
+            if len(rows) < 2:
+                return None
+            return (rows[-1]["close"] / rows[0]["close"] - 1.0) * 100.0
+
+        returns = [r for r in (window_return(t) for t in basket_universe) if r is not None]
+        per_ticker = {}
+        for t in reported:
+            value = window_return(t)
+            if value is not None:
+                per_ticker[t] = round(value, 2)
 
         rate = _rba("lookup_rate", date=event_iso)
         events.append({
@@ -565,7 +581,7 @@ def _asx_event_study(event_dates, horizon_days=7, horizon_sessions=None,
             "rba_effective_date": rate.get("effective_date"),
             "basket_return_pct": round(_mean(returns), 2) if returns else None,
             "n_constituents": len(returns),
-            "excluded_tabcorp": exclude_tabcorp and not tickers,
+            "excluded_tabcorp": exclude_tabcorp,
             "ticker_returns": per_ticker,
         })
 
@@ -688,13 +704,24 @@ def _norm_afr_date(d):
     return None
 
 
+# Every tool result is replayed into the brain's context on each subsequent
+# turn, and the brain is served with a 4,096-token window. A 4,000-character
+# article was ~1,100 tokens on its own and overflowed the window on the
+# two-call sentiment questions. AFR articles state their thesis in the headline,
+# subhead, intro and opening paragraphs, all of which are kept, so this cap
+# costs nothing for sentiment classification.
+ARTICLE_TEXT_CHARS = int(os.environ.get("AFR_ARTICLE_TEXT_CHARS", "1400"))
+
+
 def _article_payload(r, score=None, method=None, candidates=None):
+    text = r.get("TEXT", "") or ""
     out = {
         "HEADLINE": r["HEADLINE"],
         "PUBLICATIONDATE": r["PUBLICATIONDATE"],
         "SUBHEAD": r.get("SUBHEAD", ""),
         "INTRO": r.get("INTRO", ""),
-        "TEXT": (r.get("TEXT", "") or "")[:4000],
+        "TEXT": text[:ARTICLE_TEXT_CHARS],
+        "text_truncated": len(text) > ARTICLE_TEXT_CHARS,
     }
     if score is not None:
         out["match_score"] = score

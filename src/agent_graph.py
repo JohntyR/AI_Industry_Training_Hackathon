@@ -7,6 +7,10 @@ final answer -- see ``domain_model.py`` for that step.
 
 from __future__ import annotations
 
+import asyncio
+import time
+from dataclasses import dataclass, field
+
 import httpx
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
@@ -14,44 +18,37 @@ from langchain_openai import ChatOpenAI
 import config
 from tools import ALL_TOOLS
 
+# Kept deliberately short. The brain is served with a 4,096-token context
+# window, shared between this prompt, the tool schemas, the question, every tool
+# result and the reply. Prose here is paid for on every single request, so the
+# tool names and enums carry the routing and only score-critical rules are
+# spelled out.
 SYSTEM_PROMPT = """\
-You are the planning brain for a financial-market question-answering agent
-covering RBA cash-rate decisions (2010-2026), ASX company prices (2015-2021),
-and AFR news (2015-2021), using only the approved local datasets.
+You plan tool calls for a financial-market agent over RBA cash rates
+(2010-2026), ASX prices and AFR news (both 2015-2021).
 
-Your ONLY job is to choose tool calls and emit them with exact arguments, read
-the structured results, and call another tool if something is still missing.
-You do NOT write the final prose answer and you do NOT do arithmetic yourself
--- the tools compute every exact number.
+Choose tools and arguments, read the results, call again only if a requested
+fact is still missing. You never do arithmetic and never write the final
+answer; a separate model does that from your results.
 
-TOOLS
-- `query_data(dataset, metric, ...)` -- all numeric/date facts. The full metric
-  list per dataset is in the tool's `metric` parameter description; use those
-  exact names and pass each argument as its own top-level parameter
-  (e.g. ticker="BHP.AX", year=2018), never nested inside another object.
-- `afr_get_article(headline, date)` -- fetch one article's text for
-  sentiment questions, then judge sentiment from the returned text.
+RULES
+- Every number comes from a tool. Never estimate or recall one.
+- Tabcorp (TAH.AX) stays excluded from ASX rankings, baskets and averages
+  unless the question names it.
+- For any rate/RBA article count use afr_count(preset="rba_rates"). Other terms
+  are word-anchored for you, so pass the plain word.
+- Sentiment questions need afr_find_article AND rba_rate_on_date.
+- Needs ASX or AFR data after 2021? Call dataset_coverage and stop: the answer
+  is that the evidence does not support it.
+- On {"error": ...}, read the hint and retry once.
+- ANY question about what prices did after dated events -- a rate cut, an
+  article, "the one-week return after each effective date" -- is ONE
+  asx_event_study call with the list of dates. It returns the rate in force,
+  the window, the basket return and per-ticker returns together. Never answer
+  that family with rba_rate_changes or a rate lookup alone.
+- 3 tool calls maximum.
 
-RULES THAT DECIDE WHETHER AN ANSWER SCORES
-- Every dataset-derived number MUST come from a tool result. Never estimate,
-  never recall a figure from memory.
-- Exclude Tabcorp (TAH.AX) from ASX rankings, baskets, averages and extremes
-  unless the question explicitly asks to include it. It defaults to excluded.
-- AFR counts: pass a regex with word boundaries, e.g. "\\bQBE\\b",
-  "\\bunemployment\\b". The tool searches all article fields once per record.
-- For "the rate in force on <date>", use rba/lookup_rate with that date.
-- Cross-dataset limits: AFR and ASX both END in Dec 2021; RBA runs to 2026. If
-  a question needs AFR or ASX data after 2021, the correct answer is that it is
-  UNSUPPORTED by the evidence -- call query_data(dataset="meta",
-  metric="coverage") to confirm the ranges, then stop.
-- If a tool returns an {"error": ...} object, read the hint and retry with
-  corrected arguments once; do not invent the number.
-- Be efficient: aim for 3 or fewer tool calls. Never call rba/list on a whole
-  dataset when a specific metric exists.
-
-When you have every number the question asks for, STOP calling tools and reply
-with a brief plain-text acknowledgement. A separate synthesis model writes the
-final answer from your verified tool results.
+When you have every requested fact, stop and reply "done".
 """
 
 
@@ -61,7 +58,9 @@ def _build_brain_model() -> ChatOpenAI:
         openai_api_base=config.LITELLM_BASE_URL,
         model_name=config.BRAIN_MODEL,
         temperature=0.0,
-        http_async_client=httpx.AsyncClient(),
+        timeout=config.BRAIN_TIMEOUT_S,
+        max_retries=config.LLM_MAX_RETRIES,
+        http_async_client=httpx.AsyncClient(timeout=config.BRAIN_TIMEOUT_S),
     )
 
 
@@ -72,9 +71,54 @@ graph = create_agent(
 )
 
 
-async def run_brain_agent(question: str) -> dict:
-    """Run the reason -> act loop and return the raw LangGraph message state."""
-    return await graph.ainvoke(
-        {"messages": [{"role": "user", "content": question}]},
-        config={"recursion_limit": config.MAX_AGENT_STEPS},
-    )
+@dataclass
+class BrainRun:
+    """Outcome of the reasoning loop, including partial outcomes.
+
+    ``messages`` holds the last state observed, so it is populated even when the
+    loop timed out or raised. That is the whole point: evidence already gathered
+    is worth per-component partial credit, and discarding it because a later
+    step failed converts a partial score into a zero.
+    """
+
+    messages: list = field(default_factory=list)
+    status: str = "complete"          # complete | timeout | error
+    error: str = ""
+    elapsed_s: float = 0.0
+
+    @property
+    def degraded(self) -> bool:
+        return self.status != "complete"
+
+
+async def run_brain_agent(question: str, deadline_s: float | None = None) -> BrainRun:
+    """Run the reason -> act loop under a wall-clock deadline, salvaging partials.
+
+    The loop is streamed rather than awaited as a single call. ``ainvoke``
+    returns the final state or nothing at all, so an exception at step 5 throws
+    away the tool results from steps 1-4. Streaming keeps the most recent state
+    after every step, so a timeout or a crash still leaves usable evidence.
+    """
+    deadline_s = config.brain_budget_s() if deadline_s is None else deadline_s
+    run = BrainRun()
+    started = time.monotonic()
+
+    try:
+        async with asyncio.timeout(deadline_s):
+            async for chunk in graph.astream(
+                {"messages": [{"role": "user", "content": question}]},
+                config={"recursion_limit": config.MAX_AGENT_STEPS},
+                stream_mode="values",
+            ):
+                messages = chunk.get("messages") if isinstance(chunk, dict) else None
+                if messages:
+                    run.messages = messages
+    except (asyncio.TimeoutError, TimeoutError):
+        run.status = "timeout"
+        run.error = f"brain loop exceeded {deadline_s:.0f}s"
+    except Exception as exc:  # brain unreachable, recursion limit, tool crash
+        run.status = "error"
+        run.error = f"{type(exc).__name__}: {exc}"[:300]
+
+    run.elapsed_s = time.monotonic() - started
+    return run

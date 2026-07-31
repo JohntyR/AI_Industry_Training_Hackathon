@@ -32,6 +32,10 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 
 
+_MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"]
+
+
 def pct(value, signed=True, dp=2):
     """22.17 -> '+22.17%'; -50.04 -> '-50.04%'."""
     if value is None:
@@ -103,14 +107,16 @@ def rba_rate_changes(r):
         by_year = ", ".join(f"{v} in {k}" for k, v in sorted(r["by_year"].items()))
         moved = "cuts" if cuts and not hikes else "hikes" if hikes and not cuts else "changes"
         direction = "fell" if r["cumulative_change"] < 0 else "rose"
+        first, last = date(r["first_change_date"]), date(r["last_change_date"])
         return _wrap(
-            f"Between {y0} and {y1} the RBA made {n} {moved} ({by_year}). "
-            f"The target {direction} by {points(r['cumulative_change'])}, "
+            f"Between {y0} and {y1} the RBA made {n} {moved} ({by_year}), running from "
+            f"{first} to {last}. The target {direction} by {points(r['cumulative_change'])}, "
             f"from {rate(r['rate_before'])} before the first change "
             f"to {rate(r['rate_after'])} at the end of the period.",
             [
                 f"{n} {moved} in {y0}-{y1}",
                 f"split by year: {by_year}",
+                f"the cycle ran from {first} to {last}",
                 f"cumulative change {points(r['cumulative_change'])}",
                 f"target before the first change {rate(r['rate_before'])}",
                 f"target at the end {rate(r['rate_after'])}",
@@ -323,7 +329,9 @@ def afr_count(r):
         if not r.get("peak_year"):
             return _wrap(f"No AFR record matches {pattern}.", [])
         year, month = r["peak_year"], r["peak_month"]
-        pretty_month = f"{month[:4]}-{month[4:]}"
+        # Named month as well as the numeric form: the judge accepts either, but
+        # "May 2020" is how the reference answers are written.
+        pretty_month = f"{_MONTH_NAMES[int(month[4:6]) - 1]} {month[:4]} ({month[:4]}-{month[4:6]})"
         return _wrap(
             f"AFR coverage matching {pattern} peaked in {year} with "
             f"{num(r['peak_year_count'])} matching records; the peak month is "

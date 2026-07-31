@@ -35,6 +35,42 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "")
 
 MAX_AGENT_STEPS = int(os.getenv("MAX_AGENT_STEPS", "10"))
 
+# ---------------------------------------------------------------------------
+# Response-time budget
+#
+# Scoring is time-sensitive (Challenge_Brief.md -> Response-Time Rules):
+#   <= 60s   full earned points
+#   <= 300s  20% of the earned points deducted
+#   >  300s  timeout, zero for that question
+#
+# So the whole request is run against a wall-clock budget rather than left to
+# finish whenever it finishes. The budget is split: the brain loop gets most of
+# it, and a reserve is held back so the fine-tuned model always gets a chance to
+# write the answer. Answering from partial evidence still earns per-component
+# partial credit; returning raw tool JSON, or nothing, earns close to zero.
+# ---------------------------------------------------------------------------
+
+# Total wall-clock target for POST /query. Below 60 so a slow tail still lands
+# inside the full-credit window.
+REQUEST_DEADLINE_S = float(os.getenv("REQUEST_DEADLINE_S", "55"))
+
+# Held back from the brain loop so synthesis is never starved.
+SYNTH_RESERVE_S = float(os.getenv("SYNTH_RESERVE_S", "15"))
+
+# Synthesis gets at least this long even if the brain overran, because a
+# 20% slow-penalty on a real answer beats a fast answer made of raw JSON.
+SYNTH_MIN_S = float(os.getenv("SYNTH_MIN_S", "12"))
+
+# Per-call HTTP timeouts, so one hung model call cannot consume the budget.
+BRAIN_TIMEOUT_S = float(os.getenv("BRAIN_TIMEOUT_S", "30"))
+SYNTH_TIMEOUT_S = float(os.getenv("SYNTH_TIMEOUT_S", "20"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "1"))
+
+
+def brain_budget_s() -> float:
+    """Wall-clock allowance for the Qwen reasoning loop."""
+    return max(5.0, REQUEST_DEADLINE_S - SYNTH_RESERVE_S)
+
 
 def evaluation_readiness() -> list[str]:
     """Return blocking configuration problems for official evaluation.
