@@ -57,6 +57,7 @@ from typing import Any, Literal, Optional
 from langchain.tools import tool
 from pydantic import BaseModel, Field, field_validator
 
+import evidence
 import query_data as qd
 import summaries
 
@@ -144,13 +145,21 @@ def _tickers(value):
 
 
 def _emit(result: dict, summarizer=None) -> str:
-    """Attach the judge-ready summary and serialise for the model."""
+    """Attach the judge-ready summary, then return the brain's compact view.
+
+    The full payload is stashed in ``evidence`` and referenced by id. The brain
+    re-reads every tool result on each subsequent turn inside a 4,096-token
+    window, so it gets the summary, the must-state facts and the small scalar
+    fields; the article body and the full rankings go to the synthesis model,
+    which is called once with no accumulation. ``server.py`` resolves the ref
+    back to the full result before synthesis, so nothing is lost.
+    """
     if summarizer and not result.get("error"):
         try:
             result = {**result, **summarizer(result)}
         except Exception as exc:                       # never let formatting kill a call
             result = {**result, "summary_error": f"{type(exc).__name__}: {exc}"}
-    return json.dumps(result, default=str)
+    return evidence.compact(json.dumps(result, default=str))
 
 
 def _fail(message: str, hint: str, **context) -> str:

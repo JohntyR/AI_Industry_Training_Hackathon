@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "team_id": "team8-hub24",
-  "team_name": "Hub24 (Team 8)",
+  "team_id": "hublife",
+  "team_name": "Hub-Life",
   "github_url": "https://github.com/JohntyR/AI_Industry_Training_Hackathon",
   "commit_sha": "<TODO-40-char-sha-of-the-final-pushed-commit>",
   "agent": {

@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
+import evidence  # noqa: E402
 import query_data as qd  # noqa: E402
 import tools  # noqa: E402
 
@@ -26,8 +27,25 @@ PASSED = 0
 FAILED = 0
 
 
+def check_true(label, condition, detail=""):
+    global PASSED, FAILED
+    if condition:
+        PASSED += 1
+        print(f"PASS | {label}  {detail}")
+    else:
+        FAILED += 1
+        print(f"FAIL | {label}  {detail}")
+
+
 def call(tool, **kwargs):
-    return json.loads(tool.invoke(kwargs))
+    """Invoke a tool and return what the SYNTHESIS model sees.
+
+    The tool hands the brain a compact view carrying a ref; ``evidence.resolve``
+    exchanges it for the full payload, which is what ``server.py`` passes to
+    synthesis and therefore what these assertions are about. Tests that care
+    about the brain's narrower view call ``.invoke`` directly.
+    """
+    return json.loads(evidence.resolve(tool.invoke(kwargs)))
 
 
 def text_of(result):
@@ -115,7 +133,20 @@ article = call(tools.afr_find_article,
                headline="Why investors don't believe the RBA on interest rates",
                date="20211125")
 expect("afr_find_article(MHQ067)", article, "Why investors don't believe the RBA")
-assert article.get("TEXT"), "the article text must reach the synthesis model"
+
+# The brain gets a compact view; the article body is stashed and resolved back
+# for synthesis (see evidence.py). Both halves of that contract are asserted
+# here: dropping the body from the brain's view is the point, and losing it
+# before synthesis would silently gut every sentiment question.
+raw_article = tools.afr_find_article.invoke(
+    {"headline": "Why investors don't believe the RBA on interest rates", "date": "20211125"}
+)
+check_true("brain view omits the article body",
+           "TEXT" not in json.loads(raw_article),
+           f"({len(raw_article)} chars)")
+check_true("synthesis recovers the full article",
+           bool(json.loads(evidence.resolve(raw_article)).get("TEXT")),
+           f"({len(evidence.resolve(raw_article))} chars)")
 
 print("=" * 72)
 print("MHQ061 — peak year and peak month in one call, bare term auto-anchored")
@@ -240,16 +271,6 @@ MAX_RESULT_TOKENS = 500             # any single tool result replayed each turn
 
 def approx_tokens(text):
     return len(text) // 4
-
-
-def check_true(label, condition, detail=""):
-    global PASSED, FAILED
-    if condition:
-        PASSED += 1
-        print(f"PASS | {label}  {detail}")
-    else:
-        FAILED += 1
-        print(f"FAIL | {label}  {detail}")
 
 
 import agent_graph  # noqa: E402

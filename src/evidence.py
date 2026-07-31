@@ -113,10 +113,26 @@ def compact(full_result: str) -> str:
         minimal["ref"] = ref
         minimal["omitted"] = omitted + [k for k in data if k not in minimal and k not in omitted]
         out = json.dumps(minimal, default=str)
-        return out if len(out) <= MAX_BRAIN_CHARS else out[:MAX_BRAIN_CHARS]
+        if len(out) <= MAX_BRAIN_CHARS:
+            return out
+
+        # Even the essentials overflow -- a ranking's must_state lists every
+        # constituent. Shrink the CONTENT, never the serialized JSON: slicing
+        # the string yields unparseable output, resolve() then cannot read the
+        # ref, and the full payload is lost for synthesis. The result must stay
+        # valid JSON carrying a usable ref no matter how small the budget.
+        head = str(data.get("summary") or data.get("error") or "")
+        shrunk = {
+            "ref": ref,
+            "summary": head[:MAX_BRAIN_CHARS // 2],
+            "omitted": ["must_state"] + minimal["omitted"],
+            "note": "truncated for the brain; full result available to synthesis",
+        }
+        return json.dumps(shrunk, default=str)
 
     except Exception:
-        return str(full_result)[:MAX_BRAIN_CHARS]
+        # Last resort: still valid JSON, still carrying the ref when we got one.
+        return json.dumps({"result": str(full_result)[:MAX_BRAIN_CHARS // 2]})
 
 
 def resolve(brain_view: str) -> str:
