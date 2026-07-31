@@ -24,13 +24,18 @@ cannot collide.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import uuid
 from collections import OrderedDict
 
 # Ceiling on the compact view handed to the brain, in characters (~4 chars per
-# token). Three calls at this size cost roughly 450 tokens of history.
-MAX_BRAIN_CHARS = 600
+# token). Sized so the ESSENTIALS -- summary plus must_state -- survive intact
+# for a typical result: at 600 the fact list was being dropped from most of
+# them, which is the brain's only check that it has collected everything the
+# question asked for. Three calls at this size cost roughly 825 tokens against
+# the ~1,500 tokens of headroom left by the schemas and prompt.
+MAX_BRAIN_CHARS = int(os.environ.get("MAX_BRAIN_CHARS", "1100"))
 
 # Fields that are pure bulk for planning purposes: long-form article text and
 # full-population collections. The deterministic ``summary`` already states
