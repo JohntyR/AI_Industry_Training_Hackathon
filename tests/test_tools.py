@@ -286,17 +286,39 @@ check_true(
     f"limit {MAX_OVERHEAD_TOKENS}, leaving ~{BRAIN_CONTEXT_TOKENS - overhead})",
 )
 
-for label, tool, kwargs in [
+BRAIN_VIEWS = [
     ("ranking", tools.asx_returns, {"scope": "ranking", "year": "2018"}),
     ("coverage", tools.dataset_coverage, {}),
     ("3-event study", tools.asx_event_study,
      {"event_dates": "['2019-06-05','2019-07-03','2019-10-02']"}),
     ("long article", tools.afr_find_article,
      {"headline": "Why investors don't believe the RBA on interest rates", "date": "20211125"}),
-]:
-    size = approx_tokens(tool.invoke(kwargs))
-    check_true(f"{tool.name} result stays small ({label})", size <= MAX_RESULT_TOKENS,
+    ("cycle summary", tools.rba_rate_changes, {"start_year": "2011", "end_year": "2013"}),
+]
+
+sizes = []
+for label, tool, kwargs in BRAIN_VIEWS:
+    view = tool.invoke(kwargs)
+    size = approx_tokens(view)
+    sizes.append(size)
+    check_true(f"{tool.name} brain view stays small ({label})", size <= MAX_RESULT_TOKENS,
                f"(~{size} tok, limit {MAX_RESULT_TOKENS})")
+    # Whatever the brain sees, synthesis must still get the fact checklist.
+    resolved = evidence.resolve(view)
+    facts = json.loads(resolved).get("must_state") or json.loads(resolved).get("error")
+    check_true(f"{tool.name} checklist survives to synthesis ({label})", bool(facts))
+
+# The failure that keeps recurring: a question needing four tool calls overflows
+# the window and every request 400s. Budget the whole conversation, not just one
+# result -- each turn costs the assistant's tool-call message plus the result,
+# and all of it is re-sent on the next turn.
+worst = max(sizes)
+conversation = overhead + 60 + 4 * (60 + worst)
+check_true(
+    "a four-tool-call conversation fits the 4,096-token window",
+    conversation < BRAIN_CONTEXT_TOKENS,
+    f"(~{conversation} tok with the largest result ~{worst})",
+)
 
 print("=" * 72)
 print(f"RESULT: {PASSED} passed, {FAILED} failed")

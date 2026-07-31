@@ -30,12 +30,15 @@ import uuid
 from collections import OrderedDict
 
 # Ceiling on the compact view handed to the brain, in characters (~4 chars per
-# token). Sized so the ESSENTIALS -- summary plus must_state -- survive intact
-# for a typical result: at 600 the fact list was being dropped from most of
-# them, which is the brain's only check that it has collected everything the
-# question asked for. Three calls at this size cost roughly 825 tokens against
-# the ~1,500 tokens of headroom left by the schemas and prompt.
-MAX_BRAIN_CHARS = int(os.environ.get("MAX_BRAIN_CHARS", "1100"))
+# token).
+#
+# The window is 4,096 tokens and the schemas plus system prompt already spend
+# ~2,560 of it, so roughly 1,500 remain for the question, every tool result so
+# far, and the reply. A question needing four tool calls therefore has ~375
+# tokens per call including the assistant's own tool-call message. Measured:
+# 1,100 chars overflowed on the three- and four-call questions (MHQ074/080/084
+# all failed with `400 maximum context length is 4096`).
+MAX_BRAIN_CHARS = int(os.environ.get("MAX_BRAIN_CHARS", "700"))
 
 # Fields that are pure bulk for planning purposes: long-form article text and
 # full-population collections. The deterministic ``summary`` already states
@@ -46,7 +49,16 @@ BULKY_FIELDS = frozenset({
 })
 
 # Always preserved: without these the brain cannot plan or recover from errors.
-ESSENTIAL_FIELDS = ("error", "hint", "summary", "must_state")
+#
+# ``must_state`` is deliberately NOT here. It is the checklist the SYNTHESIS
+# model works from, and synthesis always receives the resolved full payload --
+# so carrying it in the brain's view buys nothing and costs context on every
+# subsequent turn. The brain only has to decide whether another call is needed,
+# which the summary already tells it.
+ESSENTIAL_FIELDS = ("error", "hint", "summary")
+
+# Bulk for the brain, but required downstream, so never dropped from the stash.
+SYNTHESIS_ONLY_FIELDS = ("must_state",)
 
 _MAX_ENTRIES = 512
 _store: OrderedDict[str, str] = OrderedDict()
@@ -95,7 +107,7 @@ def compact(full_result: str) -> str:
         for key, value in data.items():
             if key in view or key == "ref":
                 continue
-            if key in BULKY_FIELDS:
+            if key in BULKY_FIELDS or key in SYNTHESIS_ONLY_FIELDS:
                 omitted.append(key)
                 continue
             rendered = json.dumps(value, default=str)
