@@ -1,0 +1,52 @@
+
+====================
+== NeMo Framework ==
+====================
+
+NVIDIA Release  (build 236656227)
+Container image Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright (c) 2014-2024 Facebook Inc.
+Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
+Copyright (c) 2012-2014 Deepmind Technologies    (Koray Kavukcuoglu)
+Copyright (c) 2011-2012 NEC Laboratories America (Koray Kavukcuoglu)
+Copyright (c) 2011-2013 NYU                      (Clement Farabet)
+Copyright (c) 2006-2010 NEC Laboratories America (Ronan Collobert, Leon Bottou, Iain Melvin, Jason Weston)
+Copyright (c) 2006      Idiap Research Institute (Samy Bengio)
+Copyright (c) 2001-2004 Idiap Research Institute (Ronan Collobert, Samy Bengio, Johnny Mariethoz)
+Copyright (c) 2015      Google Inc.
+Copyright (c) 2015      Yangqing Jia
+Copyright (c) 2013-2016 The Caffe contributors
+All rights reserved.
+
+Various files include modifications (c) NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+
+GOVERNING TERMS: The software and materials are governed by the NVIDIA Software License Agreement
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-license-agreement/)
+and the Product-Specific Terms for NVIDIA AI Products
+(found at https://www.nvidia.com/en-us/agreements/enterprise-software/product-specific-terms-for-ai-products/).
+WARNING: Detected NVIDIA GB10 GPU, which may not yet be supported in this version of the container
+
+Skipping import of cpp extensions due to incompatible torch version 2.8.0a0+5228986c39.nv25.06 for torchao version 0.14.1             Please see https://github.com/pytorch/ao/issues/2919 for more info
+[env] torch=2.8.0a0+5228986c39.nv25.06 cuda=True
+[data] /data/smoke/train.jsonl: 64 samples, 0 dropped (> 512 tok)
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00, 29.97it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 39.18it/s]
+No label_names provided for model class `PeftModelForCausalLM`. Since `PeftModel` hides base models input arguments, if label_names is not given, label_names can't be set automatically within `Trainer`. Note that empty label_names list will be used instead.
+trainable params: 83,886,080 || all params: 8,114,147,328 || trainable%: 1.0338
+[train] 5 steps, effective batch 8, ckpt every 5 -> /ckpt
+  0%|          | 0/5 [00:00<?, ?it/s]huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+ 20%|██        | 1/5 [00:09<00:39,  9.97s/it]                                              20%|██        | 1/5 [00:09<00:39,  9.97s/it] 40%|████      | 2/5 [00:15<00:21,  7.24s/it]                                              40%|████      | 2/5 [00:15<00:21,  7.24s/it] 60%|██████    | 3/5 [00:20<00:13,  6.51s/it]                                              60%|██████    | 3/5 [00:20<00:13,  6.51s/it] 80%|████████  | 4/5 [00:26<00:06,  6.07s/it]                                              80%|████████  | 4/5 [00:26<00:06,  6.07s/it]100%|██████████| 5/5 [00:31<00:00,  5.57s/it]                                             100%|██████████| 5/5 [00:31<00:00,  5.57s/it]                                             100%|██████████| 5/5 [00:32<00:00,  5.57s/it]100%|██████████| 5/5 [00:32<00:00,  6.54s/it]
+{'loss': 1.2146, 'grad_norm': 8.234469413757324, 'learning_rate': 0.0, 'epoch': 0.12}
+{'loss': 1.2459, 'grad_norm': 8.110113143920898, 'learning_rate': 5e-05, 'epoch': 0.25}
+{'loss': 1.07, 'grad_norm': 5.744382858276367, 'learning_rate': 4.267766952966369e-05, 'epoch': 0.38}
+{'loss': 1.7405, 'grad_norm': 7.652774333953857, 'learning_rate': 2.5e-05, 'epoch': 0.5}
+{'loss': 2.0231, 'grad_norm': 8.974101066589355, 'learning_rate': 7.3223304703363135e-06, 'epoch': 0.62}
+{'train_runtime': 32.6821, 'train_samples_per_second': 1.224, 'train_steps_per_second': 0.153, 'train_loss': 1.45883367061615, 'epoch': 0.62}
+[done] adapter -> /ckpt/hf_adapter
+[ckpt] /ckpt/checkpoint-5

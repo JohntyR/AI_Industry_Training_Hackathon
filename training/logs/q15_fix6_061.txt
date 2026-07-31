@@ -1,0 +1,26 @@
+
+==============================================================================
+OK  MHQ058  rubric 10.0/10.0  strict 10.0/10.0  10.8s  steps=3  datasets=RBA,AFR
+  Q: Retrieve the AFR article "Travel stocks take off on vaccine rollout" published 23 Feb 2021 and use the RBA cash-rate target in force on that date. Cla
+  REFERENCE: The RBA cash-rate target in force was 0.10%. The article's sentiment is positive. The likely direction for ASX travel shares is upward.
+  ANSWER:    The article's financial-market sentiment is positive, with ASX travel shares likely to continue rising. The RBA cash-rate target on 23 Feb 2021 was 10% (0.1) effective from 3 Feb 2021.
+
+==============================================================================
+OK  MHQ061  rubric 10.0/10.0  strict 10.0/10.0  9.6s  steps=3  datasets=AFR
+  Q: Using a case-insensitive once-per-record whole-word unemployment search, which year and which month have the highest AFR counts?
+  REFERENCE: It peaked in 2020 with 1,452 matching records. May 2020 is the peak month with 218.
+  ANSWER:    The year with the highest AFR counts is 2020, with 1452 records, and the month is May 2020, with 218 records.
+
+==============================================================================
+OK  MHQ076  rubric 10.0/10.0  strict 10.0/10.0  9.6s  steps=3  datasets=ASX,AFR
+  Q: For 2021, report the once-per-record whole-word QBE AFR count and QBE.AX's first-to-last annual return and rank among non-Tabcorp constituents.
+  REFERENCE: There are 369 AFR records matching whole-word QBE in 2021, and QBE.AX had the best non-Tabcorp 2021 return at +35.57%.
+  ANSWER:    For 2021, the once-per-record whole-word QBE AFR count is 369. QBE.AX's first-to-last annual return is 35.57%. Among non-Tabcorp constituents, QBE.AX ranks 1st for annual returns.
+
+##############################################################################
+LOCAL SCORE (rubric): 30.0/30.0 = 100.0% over 3 questions
+LOCAL SCORE (strict): 30.0/30.0 = 100.0%  <- every reference token present
+  full credit: 3  partial: 0  zero: 0  failed: 0
+
+Note: token-presence grading is stricter than the LLM judge on phrasing and
+cannot judge sentiment/explanation quality — eyeball the prose above for those.

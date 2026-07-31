@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 import config
+import evidence
 import query_data
 from agent_graph import run_brain_agent
 from domain_model import synthesize
@@ -145,8 +146,11 @@ async def query(request: QueryRequest) -> QueryResponse:
     run = await run_brain_agent(question, deadline_s=config.brain_budget_s())
     steps, tool_trace = _extract_trace(run.messages)
 
+    # The brain saw a compact view of each result so the loop fits the served
+    # context window; synthesis gets the full payload back. See evidence.py.
     tool_results = [
-        entry.result for entry in tool_trace if entry.result and not entry.tool.startswith("_")
+        evidence.resolve(entry.result)
+        for entry in tool_trace if entry.result and not entry.tool.startswith("_")
     ]
     if run.degraded:
         tool_trace.append(ToolTraceEntry(

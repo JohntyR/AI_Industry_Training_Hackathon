@@ -1,0 +1,488 @@
+{
+  "model": "nemotron-8b-finance",
+  "endpoint": "http://10.0.1.11:8001/v1",
+  "n": 50,
+  "aggregate": {
+    "number_recall": 0.931,
+    "no_hedge": 0.98,
+    "concision": 0.68,
+    "composite": 0.9007
+  },
+  "samples": [
+    {
+      "gold": "QBE.AX returned 33.17% between 2019-01-16 and 2020-01-20.",
+      "pred": "QBE.AX performed a 33.17% return from 2019-01-16 to 2020-01-20, with a total of 1 record in the query. The entity is the Australian Stock Exchange (ASX) ticker QBE.AX.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between AZJ.AX and CBA.AX is 0.376.",
+      "pred": "The daily returns of AZJ.AX and CBA.AX have a positive correlation of 0.376, indicating a moderate relationship between the two stocks' price movements. (Entity: Tickers AZJ.AX and CBA.AX)",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "AMP.AX returned -35.90% over 2021.",
+      "pred": "The return for AMP.AX in 2021 was -35.9%.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "On 3 Feb 2023 the cash rate target in force was 3.1%, set by the decision effective 7 Dec 2022.",
+      "pred": "The RBA cash rate target in force on 3 Feb 2023 was 3.1% per annum, effective from 7 Dec 2022.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "AGL.AX closed at 6.3053460121154785 on 2021-07-06.",
+      "pred": "The closing price of AGL.AX on 2021-07-06 is 6.3053460121154785.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "CMW.AX had a daily volatility of 0.9866% in 2019, an annualised 15.66%.",
+      "pred": "The daily volatility of CMW.AX's returns in 2019 was 98.66%, as indicated by the verified tool results.",
+      "number_recall": 0.3333333333333333,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.5333333333333333,
+      "missing_numbers": [
+        "0.9866",
+        "15.66"
+      ]
+    },
+    {
+      "gold": "CBA.AX returned 2.01% over 2017.",
+      "pred": "CBA.AX performed a 2.01% return over 2017, indicating positive growth.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "1487 AFR articles match \\bsuperannuation\\b in 2020.",
+      "pred": "The superannuation coverage in 2020 was 1487 records. This data pertains to the number of superannuation fund records, with the ticker and year not specified in the provided results.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "TAH.AX returned 16.88% between 2017-12-18 and 2018-12-04.",
+      "pred": "TAH.AX generated a 16.88% return over the specified period, indicating positive performance from 2017-12-18 to 2018-12-04.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "1807 AFR articles match \\byield\\b in 2015.",
+      "pred": "The yield coverage for the year 2015 was 1807 records. This data pertains to the verified tool results, specifically the query_data.afr.count_by_year function.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "CMW.AX returned 2.34% between 2019-05-31 and 2019-07-18.",
+      "pred": "CMW.AX had a return of 2.34% between 2019-05-31 and 2019-07-18. The data supports a positive market direction.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "ANZ.AX returned 26.06% across the full 2015-2021 sample.",
+      "pred": "The return from the start to the end of the data for ANZ.AX is 26.06%. This positive return indicates a likely upward market trend.",
+      "number_recall": 0.3333333333333333,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.5333333333333333,
+      "missing_numbers": [
+        "-2021",
+        "2015"
+      ]
+    },
+    {
+      "gold": "GPT.AX closed at 2.7435479164123535 on 2020-08-17.",
+      "pred": "The closing price of GPT.AX on 2020-08-17 is 2.7435479164123535.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "IAG.AX returned 25.39% between 2017-10-20 and 2018-07-04.",
+      "pred": "IAG.AX experienced a 25.39% return between 2017-10-20 and 2018-07-04. The total number of records supporting this result is 1.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "RIO.AX returned -19.36% over 2015.",
+      "pred": "The 2015 price return for RIO.AX was -19.36%.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "1924 AFR articles match \\binflation\\b in 2016.",
+      "pred": "There were 1924 AFR articles mentioning inflation in 2016.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "CMW.AX had a daily volatility of 0.9051% in 2018, an annualised 14.37%.",
+      "pred": "CMW.AX's daily volatility in 2018 was 0.9051, and its annualized volatility was 14.37%.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "TCL.AX had a daily volatility of 2.5204% in 2020, an annualised 40.01%.",
+      "pred": "The daily volatility of TCL.AX's returns in 2020 was 2.52%. The annualized volatility was 40.01%.",
+      "number_recall": 0.6666666666666666,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.7666666666666666,
+      "missing_numbers": [
+        "2.5204"
+      ]
+    },
+    {
+      "gold": "TPG.AX closed at 6.568170547485352 on 2015-08-10.",
+      "pred": "The closing price of TPG.AX on 2015-08-10 is 6.568170547485352.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "3053 AFR articles match \\bprofit\\b in 2021.",
+      "pred": "The profit coverage in 2021 was 3053 records. This figure is based on the verified tool results, which show a count of 3053 for the year 2021 under the pattern \"profit\".",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "CBA.AX had a maximum drawdown of -39.02%, peaking on 14 Feb 2020 and troughing on 23 Mar 2020.",
+      "pred": "CBA.AX's worst peak-to-trough decline was -39.02% between 14 February 2020 and 23 March 2020. The total number of records supporting this result is 1.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "QAN.AX closed at 2.741344928741455 on 2016-08-15.",
+      "pred": "The closing price of QAN.AX on 2016-08-15 is 2.741344928741455.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between AGL.AX and QBE.AX is 0.256.",
+      "pred": "The correlation between AGL.AX and QBE.AX is 0.256, indicating they move together with a moderate degree of closeness, as shown by the verified tool results.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "IAG.AX returned 1.96% over 2018.",
+      "pred": "IAG.AX performed a 1.96% return over 2018, indicating a positive performance.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "BHP.AX closed at 11.7158842086792 on 2016-11-22.",
+      "pred": "BHP.AX closed at 11.7158842086792 on 2016-11-22. The entity is the Australian Securities Exchange (ASX), ticker BHP.AX, and the number belongs to the closing price.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "BHP.AX closed at 15.014142036437988 on 2018-04-18.",
+      "pred": "BHP.AX closed at approximately $15.0141 on 2018-04-18. However, following the strict rules, the exact figure should be stated without approximation. \n\nFinal answer: BHP.AX closed at 15.014142036437988 on 2018-04-18.",
+      "number_recall": 1.0,
+      "no_hedge": 0.0,
+      "concision": 0.0,
+      "composite": 0.7,
+      "missing_numbers": []
+    },
+    {
+      "gold": "On 3 Nov 2025 the cash rate target in force was 3.6%, set by the decision effective 1 Oct 2025.",
+      "pred": "The cash rate target applied on 3 Nov 2025 was 3.6% effective from 1 Oct 2025.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between SUN.AX and TPG.AX is 0.281.",
+      "pred": "The correlation between SUN.AX and TPG.AX daily returns is 0.281, indicating a weak positive relationship. This result is based on the 175 records analyzed, with 41 of them showing a positive correlation.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "BHP.AX had a daily volatility of 2.4524% in 2020, an annualised 38.93%.",
+      "pred": "BHP.AX's daily volatility in 2020 was 2.4524%, and its annualized volatility was 38.93%.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "GPT.AX had a maximum drawdown of -52.69%, peaking on 5 Jul 2019 and troughing on 23 Mar 2020.",
+      "pred": "The largest drawdown for GPT.AX was -52.69% and occurred between the peak date of July 5, 2019, and the trough date of March 23, 2020.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "On 3 Nov 2011 the cash rate target in force was 4.5%, set by the decision effective 2 Nov 2011.",
+      "pred": "The RBA cash rate target in force on 3 Nov 2011 was 4.5%, with an effective date of 2 Nov 2011.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "1182 AFR articles match \\bNAB\\b in 2019.",
+      "pred": "The NAB coverage in 2019 was 1182 records. This data pertains to NAB, the National Australia Bank, and the number refers to the count of NAB-related records from that year.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "BHP.AX returned 139.40% across the full 2015-2021 sample.",
+      "pred": "BHP.AX's total return across the full sample was 139.4%. The entity is the Australian Stock Exchange (ASX) ticker.",
+      "number_recall": 0.3333333333333333,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.5333333333333333,
+      "missing_numbers": [
+        "-2021",
+        "2015"
+      ]
+    },
+    {
+      "gold": "NAB.AX had a daily volatility of 1.3606% in 2015, an annualised 21.6%.",
+      "pred": "NAB.AX's daily volatility in 2015 was 1.36% and its annualized volatility was 21.6%.",
+      "number_recall": 0.6666666666666666,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.7666666666666666,
+      "missing_numbers": [
+        "1.3606"
+      ]
+    },
+    {
+      "gold": "On 21 Aug 2023 the cash rate target in force was 4.1%, set by the decision effective 2 Aug 2023.",
+      "pred": "The RBA cash rate target in force on 21 Aug 2023 was 4.1% effective from 2 Aug 2023.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "991 AFR articles match \\bdividend\\b in 2018.",
+      "pred": "The dividend coverage in 2018 was 991 times. This figure is based on the verified tool results, which show that there were 991 dividend payments in 2018.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "AGL.AX returned 45.45% between 2016-03-03 and 2017-06-28.",
+      "pred": "AGL.AX performed a 45.45% return from 2016-03-03 to 2017-06-28. This is a positive performance, indicating a likely upward market trend.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "Coverage of \\bASIC\\b peaked in 2019 with 1120 articles; the yearly breakdown is {\"2015\": 568, \"2016\": 918, \"2017\": 689, \"2018\": 1112, \"2019\": 1120, \"2020\": 793, \"2021\": 785}.",
+      "pred": "AFR coverage of ASIC peaked in 2019 with a count of 1120 articles. The number of articles increased each year from 2015 to 2019, reaching its peak before declining in subsequent years.",
+      "number_recall": 0.21428571428571427,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 0.44999999999999996,
+      "missing_numbers": [
+        "1112",
+        "2016",
+        "2017",
+        "2018",
+        "2020",
+        "2021",
+        "568",
+        "689",
+        "785",
+        "793",
+        "918"
+      ]
+    },
+    {
+      "gold": "On 21 Aug 2013 the cash rate target in force was 2.5%, set by the decision effective 7 Aug 2013.",
+      "pred": "The effective cash rate target as at 21 August 2013 was 2.5% (effective from 7 August 2013) as per the verified tool results.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "BHP.AX returned 21.57% over 2017.",
+      "pred": "The 2017 price return for BHP.AX was 21.57%.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "On 12 Feb 2013 the cash rate target in force was 3.0%, set by the decision effective 6 Feb 2013.",
+      "pred": "The cash rate target on 12 Feb 2013 was 3.0% effective as of 6 Feb 2013.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between QAN.AX and SGP.AX is 0.414.",
+      "pred": "The correlation between QAN.AX and SGP.AX is 0.414, indicating a moderate level of movement together, with 41.4% of the time their movements are in the same direction. (41 of 175 records)",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "SUN.AX returned -28.85% between 2020-01-21 and 2020-06-01.",
+      "pred": "The return for SUN.AX between 2020-01-21 and 2020-06-01 was -28.85%. This negative return indicates a decline in the stock's value during that period, and the market direction is negative.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between AZJ.AX and SGP.AX is 0.195.",
+      "pred": "The correlation between AZJ.AX and SGP.AX is 0.195, indicating a weak, positive relationship in their movement, with AZJ.AX being less closely tied to SGP.AX compared to a random pair.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "AMP.AX closed at 0.9789454936981201 on 2021-05-17.",
+      "pred": "The closing price of AMP.AX on 2021-05-17 is 0.9789454936981201.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "698 AFR articles match \\bGDP\\b in 2018.",
+      "pred": "The GDP coverage for 2018 was 698. This figure is based on the verified tool results, which show that the GDP for the year 2018 was 698.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "RIO.AX closed at 45.849090576171875 on 2018-07-04.",
+      "pred": "RIO.AX closed at 45.849090576171875 on 2018-07-04.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "Coverage of \\bbond\\b peaked in 2021 with 1987 articles; the yearly breakdown is {\"2015\": 1274, \"2016\": 1910, \"\": 2, \"2017\": 1037, \"2018\": 839, \"2019\": 1093, \"2020\": 1777, \"2021\": 1987}.",
+      "pred": "AFR coverage of bonds peaked in 2021 with a count of 1987 records. The yearly counts are as follows: 1274 in 2015, 1910 in 2016, 2 in (2014 or 2012), 1037 in 2017, 839 in 2018, 1093 in 2019, and 1777 in 2020.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 1.0,
+      "composite": 1.0,
+      "missing_numbers": []
+    },
+    {
+      "gold": "549 AFR articles match \\bdeficit\\b in 2020.",
+      "pred": "There were 549 AFR articles mentioning a deficit in 2020. The verified tool results show that 549 articles in the database used the keyword 'deficit' and were categorized under the year 2020.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    },
+    {
+      "gold": "The correlation of daily returns between QAN.AX and SUN.AX is 0.403.",
+      "pred": "The correlation between QAN.AX and SUN.AX daily returns is 0.403, indicating a weak positive correlation. This result is based on the 175 records analyzed, with 41 of them showing a positive return for both stocks.",
+      "number_recall": 1.0,
+      "no_hedge": 1.0,
+      "concision": 0.0,
+      "composite": 0.85,
+      "missing_numbers": []
+    }
+  ]
+}

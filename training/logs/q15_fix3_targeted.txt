@@ -1,0 +1,51 @@
+
+==============================================================================
+ZERO MHQ035  rubric 0.0/10.0  strict 0.0/10.0  4.7s  steps=3  datasets=RBA
+  Q: Across the 2011-2013 easing period, how many cuts occurred and how far did the target fall?
+  REFERENCE: Eight cuts occurred: 2 in 2011, 4 in 2012, and 2 in 2013. They totalled -2.25 percentage points, taking the target from 4.75% before the first cut to 2.50% at the end of 2013.
+  ANSWER:    During the 2011-2013 easing period, 8 cuts occurred, and the RBA target fell from 4.75% to 2.5%.
+    [C01] -5.0 MISSING (required) num:2, num:4, num:2012, num:2013
+        expected: Eight cuts occurred: 2 in 2011, 4 in 2012, and 2 in 2013.
+    [C02] -5.0 MISSING (required) num:-2.25, num:2013
+        expected: They totalled -2.25 percentage points, taking the target from 4.75% before the first cut to 2.50% at the end of 2013.
+
+==============================================================================
+PART MHQ072  rubric 6.7/10.0  strict 6.7/10.0  19.7s  steps=3  datasets=RBA,ASX
+  Q: After the 5 Jun 2019 RBA cut, report the new target and the 5-12 Jun returns for the non-Tabcorp basket, CBA.AX, NAB.AX, ANZ.AX, BHP.AX, and RIO.AX.
+  REFERENCE: The RBA cut to 1.25%. From 5 to 12 Jun, the non-Tabcorp basket rose +2.88%; CBA +0.60%, NAB +1.39%, ANZ +0.89%, BHP +5.89%, and RIO +2.91%.
+  ANSWER:    The new target for the non-Tabcorp basket after the 5 Jun 2019 RBA cut is 1.25. The 5-12 Jun returns for CBA.AX, NAB.AX, ANZ.AX, BHP.AX, and RIO.AX are 0.6%, 1.39%, 0.89%, 5.89%, and 2.91% respectively.
+    [C02] -3.3 MISSING (required) num:12, num:2.88
+        expected: From 5 to 12 Jun, the non-Tabcorp basket rose +2.88%
+
+==============================================================================
+ZERO MHQ074  rubric 0.0/10.0  strict 0.0/10.0  22.5s  steps=4  datasets=RBA,ASX
+  Q: Across the three 2019 RBA cuts, what was the non-Tabcorp basket's one-week return after each effective date?
+  REFERENCE: After 5 Jun the basket rose +2.88% by 12 Jun; after 3 Jul it rose +0.24% by 10 Jul; after 2 Oct it fell -2.17% by 9 Oct. The cuts took the target to 1.25%, 1.00%, and 0.75%, respectively.
+  ANSWER:    The non-Tabcorp basket had a one-week return of -25% after each effective date: -25% on 5 June 2019 (effective date), -25% on 3 July 2019 (effective date), and -25% on 2 October 2019 (effective date). Note: The verified tool results do not provide the one-week return for the non-Tabcorp basket directly. However, the "basket_window_return" metric for the ASX dataset shows a -25% return on 5 June 20
+    [C01] -2.5 MISSING (required) num:2.88, num:12
+        expected: After 5 Jun the basket rose +2.88% by 12 Jun
+    [C02] -2.5 MISSING (required) num:0.24, num:10
+        expected: after 3 Jul it rose +0.24% by 10 Jul
+    [C03] -2.5 MISSING (required) num:-2.17, num:9
+        expected: after 2 Oct it fell -2.17% by 9 Oct.
+    [C04] -2.5 MISSING (required) num:1.25, num:1, num:0.75
+        expected: The cuts took the target to 1.25%, 1.00%, and 0.75%, respectively.
+
+==============================================================================
+PART MHQ084  rubric 6.7/10.0  strict 3.3/10.0  24.2s  steps=6  datasets=RBA,ASX,AFR
+  Q: For 2019, report the RBA cut count, cumulative change and year-end target; the AFR rate/RBA-pattern count; and the non-Tabcorp ASX basket's simple ave
+  REFERENCE: The RBA cut three times for -0.75 percentage points and ended at 0.75%. AFR contains 3,181 records matching interest rates?|cash rate|rate cut|rate hike|\\bRBA\\b. The non-Tabcorp ASX average return was +20.11%.
+  ANSWER:    For 2019, the RBA cut count is 3, cumulative change is -0.75, and the year-end target is not explicitly provided. The AFR rate/RBA-pattern count for 2019 is 1283. The non-Tabcorp ASX basket's simple average annual return for 2019 is 20.11. The AGL.AX non-Tabcorp ASX basket's simple average annual return is 7.29. The data does not support reporting the year-end target or the AFR rate as a cut count
+    [C01] soft-miss (not in scoring_notes) num:0.75  <- add for insurance
+    [C02] -3.3 MISSING (required) num:3181
+        expected: AFR contains 3,181 records matching interest rates?|cash rate|rate cut|rate hike|\\bRBA\\b.
+
+##############################################################################
+LOCAL SCORE (rubric): 13.3/40.0 = 33.4% over 4 questions
+LOCAL SCORE (strict): 10.0/40.0 = 25.0%  <- every reference token present
+  full credit: 0  partial: 2  zero: 2  failed: 0
+  PARTIAL: MHQ072, MHQ084
+  ZERO:    MHQ035, MHQ074
+
+Note: token-presence grading is stricter than the LLM judge on phrasing and
+cannot judge sentiment/explanation quality — eyeball the prose above for those.

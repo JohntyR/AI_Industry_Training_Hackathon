@@ -332,14 +332,57 @@ also model-free.
 python tests/test_tools.py
 ```
 
-### Runtime behaviour
+### Tool evidence ceiling
 
-[tests/test_runtime.py](tests/test_runtime.py) covers the response-time budget, partial-evidence
-salvage, and three concurrent requests, using fakes in place of the model servers.
+[training/eval/tool_evidence_audit.py](training/eval/tool_evidence_audit.py) answers a question an
+end-to-end score cannot: *do the tools actually supply every fact the judge asks for?* It executes
+the tools each public question should route to, and grades the `summary`/`must_state` text they
+produce with the same component grader used on real runs.
 
 ```bash
-python tests/test_runtime.py
+python training/eval/tool_evidence_audit.py
 ```
+
+Current result: **88.4% from tool evidence alone, 100% once the components that are a model
+judgement** — sentiment labels, market direction, the supported/unsupported verdict — **are
+included**, at 1.47 tool calls per question. There is no tool-layer gap, so every remaining
+end-to-end loss is routing or synthesis, and building more tools would not recover it.
+
+### Context budget
+
+The brain is served with a **4,096-token window**, shared between the system prompt, the tool
+schemas, the question, every tool result replayed each turn, and the reply. Tool schemas are
+therefore a per-request cost, and [tests/test_tools.py](tests/test_tools.py) asserts the fixed
+overhead stays under 2,600 tokens (currently ~2,363: ~2,033 of schema, ~330 of prompt) and that no
+single tool result exceeds 500 tokens.
+
+This is not theoretical. An untrimmed version of the toolkit cost ~3,750 tokens of overhead; every
+request then failed with `400 maximum context length is 4096`, and the agent scored **12.4%** while
+every unit test still passed, because the tools themselves were correct.
+
+### Brain latency — thinking mode is off
+
+The served brain generates at roughly **21 tokens/second**, so latency is governed by how many
+tokens it *emits*, not by how long the prompt is. Qwen3 emits a hidden reasoning block before its
+visible output, and measured on this model that cost:
+
+| | Output tokens |
+|---|---:|
+| Producing one tool call | 503 |
+| Producing the word `"done"` | 190 |
+
+About 35 seconds per question against a 40-second brain budget. Under the three concurrent requests
+the harness sends, 8 of 15 public questions hit `_brain_timeout` having completed **zero** tool
+calls — and synthesis then invented figures from the empty evidence.
+
+[src/agent_graph.py](src/agent_graph.py) therefore sends
+`chat_template_kwargs={"enable_thinking": false}`, which took a representative call from 17.3 s to
+1.7 s and brain output from ~693 tokens per question to ~160–290. `reasoning_effort: "none"` was
+measured to have no effect on this server; only the chat-template switch works. Set
+`BRAIN_THINKING=1` to measure it back on.
+
+The planner does not need chain-of-thought: it selects a named tool and its arguments, and the
+deterministic layer performs every calculation.
 
 ### Runtime behaviour
 
@@ -376,6 +419,24 @@ Results are written to [logs/langchain_public_eval.json](logs/langchain_public_e
 recorded run, also replayed as fixed evidence by the base-vs-fine-tuned comparison) and
 `logs/public_eval_summary.md`. Note that a run **overwrites** the recorded log — keep a copy if the
 current one is the last known-good pipeline trace.
+
+### Measuring a change
+
+Grade any two recorded runs with the same grader and the difference is attributable to whatever
+changed between them:
+
+```bash
+python training/eval/grade_components.py logs/public_eval_baseline_old_toolkit.json
+python training/eval/grade_components.py logs/langchain_public_eval.json
+```
+
+[logs/public_eval_baseline_old_toolkit.json](logs/public_eval_baseline_old_toolkit.json) is kept as
+the reference point: the pipeline as it scored with the previous two-tool interface, **72.7%**.
+Replacing that with the task-shaped toolkit, the trimmed prompts, and the deterministic
+`summary`/`must_state` formatting moved the same 15 questions to **89.2%**.
+
+The grader is deliberately stricter than the organizers' LLM judge — it requires every anchor in an
+expected fact, including signs. Read it as an A/B instrument, not as a predicted leaderboard score.
 
 The public questions are calibration cases only — no question-ID-specific answers are hard-coded
 anywhere in the agent.

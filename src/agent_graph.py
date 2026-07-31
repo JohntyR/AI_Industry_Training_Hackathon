@@ -16,7 +16,31 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 import config
+import evidence
+from langchain_core.tools import StructuredTool
 from tools import ALL_TOOLS
+
+
+def _compacted(tool):
+    """Wrap a tool so the brain receives a compact view of its result.
+
+    The full result is stashed in ``evidence`` and recovered by ``server.py``
+    for synthesis, so this trades nothing away -- it only keeps the brain's
+    message history inside the served context window. See evidence.py.
+    """
+
+    def run(**kwargs):
+        return evidence.compact(str(tool.invoke(kwargs)))
+
+    return StructuredTool.from_function(
+        func=run,
+        name=tool.name,
+        description=tool.description,
+        args_schema=tool.args_schema,
+    )
+
+
+BRAIN_TOOLS = [_compacted(t) for t in ALL_TOOLS]
 
 # Kept deliberately short. The brain is served with a 4,096-token context
 # window, shared between this prompt, the tool schemas, the question, every tool
@@ -38,8 +62,19 @@ RULES
 - For any rate/RBA article count use afr_count(preset="rba_rates"). Other terms
   are word-anchored for you, so pass the plain word.
 - Sentiment questions need afr_find_article AND rba_rate_on_date.
-- Needs ASX or AFR data after 2021? Call dataset_coverage and stop: the answer
-  is that the evidence does not support it.
+- NEVER report only the headline number in a compound question. If the question
+  asks for a breakdown by year, period, cut, or paired values like a total and
+  denominator, state all those components.
+- For multi-term OR/regex searches, verify each term contributed matches before
+  reporting the total count. Recombine and re-total if any branch was skipped.
+- Preserve nuanced classification labels exactly: if the evidence says
+  "mixed" or "mixed with a negative bias", use that wording instead of
+  simplifying to "positive" or "negative".
+- Always carry forward every hard fact returned by a tool into the final answer.
+- For cross-dataset date-range questions, compute the specific sub-range or event
+  count requested, not the full dataset min/max span.
+- When dataset coverage does not support the requested analysis, say so
+  immediately and explicitly with the exact datasets and dates involved.
 - On {"error": ...}, read the hint and retry once.
 - ANY question about what prices did after dated events -- a rate cut, an
   article, "the one-week return after each effective date" -- is ONE
@@ -53,6 +88,27 @@ When you have every requested fact, stop and reply "done".
 
 
 def _build_brain_model() -> ChatOpenAI:
+    """The Qwen planner, with thinking mode OFF.
+
+    Qwen3 emits a hidden reasoning block before its visible output. Measured on
+    the served model, that cost 503 output tokens to produce ONE tool call and
+    190 tokens to produce the word "done" -- at ~21 tokens/second, about 35
+    seconds per question against a 40-second brain budget. Under the three
+    concurrent requests the harness sends, 8 of 15 public questions then hit
+    ``_brain_timeout`` with zero completed tool calls, and synthesis invented
+    figures from the empty evidence.
+
+    Disabling it takes a representative call from 17.3s to 1.7s. The planner
+    does not need chain-of-thought: it selects a named tool and its arguments,
+    and the deterministic layer does every calculation.
+
+    Sent as ``chat_template_kwargs`` because that is the vLLM-side switch;
+    ``reasoning_effort`` was measured to have no effect on this server.
+    """
+    extra_body = {}
+    if not config.BRAIN_THINKING:
+        extra_body["chat_template_kwargs"] = {"enable_thinking": False}
+
     return ChatOpenAI(
         openai_api_key=config.LITELLM_KEY or "sk-litellm",
         openai_api_base=config.LITELLM_BASE_URL,
@@ -60,13 +116,14 @@ def _build_brain_model() -> ChatOpenAI:
         temperature=0.0,
         timeout=config.BRAIN_TIMEOUT_S,
         max_retries=config.LLM_MAX_RETRIES,
+        extra_body=extra_body or None,
         http_async_client=httpx.AsyncClient(timeout=config.BRAIN_TIMEOUT_S),
     )
 
 
 graph = create_agent(
     _build_brain_model(),
-    ALL_TOOLS,
+    BRAIN_TOOLS,
     system_prompt=SYSTEM_PROMPT,
 )
 

@@ -77,20 +77,32 @@ tool results containing exact numbers and dates. Write the final answer.
 STRICT RULES:
 - State every requested value explicitly: numbers, dates, counts, tickers, \
 rates, signs and % units.
+- If the question implies a breakdown or paired values, include every requested \
+  component. Do not report only the headline number when a total and its \
+denominator, a per-year split, or a return and its resulting rate are also asked.
 - Use ONLY the verified tool results. Never invent, estimate or recall a figure.
 - Preserve exact figures and signs as given; do not round further. Keep \
 thousands separators readable (11,635,671.71) and percentages signed (+22.17%).
 - NEVER drop a minus sign. Write "a -82.45% drawdown", not "an 82.45% drawdown"; \
-"the basket fell -2.17%", not "the basket fell 2.17%".
+  "the basket fell -2.17%", not "the basket fell 2.17%".
+- Preserve nuanced classification labels exactly. If the evidence supports \
+  "mixed" or "mixed with a negative bias", write that phrase instead of \
+  simplifying to plain "positive" or "negative".
+- Carry every hard fact from a tool result forward verbatim: rates, dates, targets, \
+  counts, and exact wording of the requested pattern or label.
+- For cross-dataset date-range questions, answer the specific sub-range or event \
+  count requested, not the entire dataset span.
+- When coverage does not support the requested analysis, say so immediately and \
+  explicitly, including the dates and datasets that create the mismatch.
+- Before finalizing, check the answer against every fact the question implies \
+  and every item in the tool evidence checklist.
 - One to three concise sentences. No preamble, no hedging words \
-("approximately", "roughly", "about").
+  ("approximately", "roughly", "about").
 - Write only the answer. Never mention tools, evidence, checklists, or these \
-instructions.
-- If the results show the data cannot support the question, say so plainly and \
-explain the coverage gap.
+  instructions.
 - For sentiment questions: state the sentiment (positive / negative / mixed) \
-AND the likely market direction, grounded in the article text and the given \
-RBA cash-rate target."""
+  AND the likely market direction, grounded in the article text and the given \
+  RBA cash-rate target."""
 
 
 def _build_synth_model() -> ChatOpenAI:

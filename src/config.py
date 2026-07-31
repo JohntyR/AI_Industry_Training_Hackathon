@@ -62,6 +62,11 @@ SYNTH_RESERVE_S = float(os.getenv("SYNTH_RESERVE_S", "15"))
 SYNTH_MIN_S = float(os.getenv("SYNTH_MIN_S", "12"))
 
 # Per-call HTTP timeouts, so one hung model call cannot consume the budget.
+# Qwen3 thinking mode. Off by default: the hidden reasoning block dominated
+# brain latency (503 output tokens for one tool call) and caused timeouts under
+# concurrency. Set BRAIN_THINKING=1 to measure it back on.
+BRAIN_THINKING = os.getenv("BRAIN_THINKING", "").strip().lower() in ("1", "true", "yes")
+
 BRAIN_TIMEOUT_S = float(os.getenv("BRAIN_TIMEOUT_S", "30"))
 SYNTH_TIMEOUT_S = float(os.getenv("SYNTH_TIMEOUT_S", "20"))
 LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "1"))

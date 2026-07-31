@@ -1,0 +1,44 @@
+INFO:     Started server process [93582]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39638 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39644 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39660 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46188 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46196 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38530 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38542 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38552 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59456 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41436 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41438 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41512 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39562 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47184 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55716 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36980 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48048 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33198 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42896 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42900 - "POST /query HTTP/1.1" 200 OK
+INFO:     10.3.0.211:43740 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.3.0.211:43754 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44156 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44162 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51878 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51886 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51902 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51906 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55474 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55462 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55484 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57860 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53136 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53126 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47312 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47326 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60966 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60354 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35216 - "POST /query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60356 - "POST /query HTTP/1.1" 200 OK
