@@ -3,7 +3,7 @@
   "team_id": "hublife",
   "team_name": "Hub-Life",
   "github_url": "https://github.com/JohntyR/AI_Industry_Training_Hackathon",
-  "commit_sha": "dffc116aa0ce2b6d8f106f764c183148e1f46aba",
+  "commit_sha": "bace63c0043bb3cbdb485d09621778c4e196785a",
   "agent": {
     "endpoint": "http://10.3.0.211:5000",
     "health_path": "/health",
