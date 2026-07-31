@@ -1,6 +1,7 @@
 langchain~=1.2
 langchain-openai~=1.2
 langgraph~=1.1
+langgraph-cli[inmem]~=0.4
 fastapi~=0.136
 uvicorn[standard]~=0.38
 python-dotenv~=1.1
